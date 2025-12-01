@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharmacy Dashboard</title>
+<style>
+body { font-family: Arial, sans-serif; background:#f4f6fb; margin:0; padding:0; transition:0.3s; }
+body.dark { background:#1e1e2f; color:#eee; }
+.sidebar { width:220px; background:#2b6cb0; height:100vh; position:fixed; top:0; left:0; padding-top:20px; color:white; overflow-y:auto; transition:0.3s;}
+.sidebar.dark { background:#0d1a33; }
+.sidebar h2 { text-align:center; margin-bottom:20px; }
+.sidebar a { display:block; padding:12px 20px; color:white; text-decoration:none; margin-bottom:5px; border-radius:5px; transition:0.3s; }
+.sidebar a:hover { background:#1e4a7a; }
+.main { margin-left:220px; padding:20px; transition:0.3s; }
+.card { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:20px; transition:0.3s; }
+.card.dark { background:#2c2c3d; color:#eee; }
+input, select, textarea, button { width:100%; padding:10px; border-radius:6px; border:1px solid #ddd; margin-top:5px; margin-bottom:10px; }
+button { background:#2b6cb0; color:white; border:none; cursor:pointer; transition:0.3s; }
+button:hover { opacity:0.9; }
+button.delete { background:red; }
+h1,h2 { color:#2b6cb0; text-align:center; }
+h1.dark, h2.dark { color:#eee; }
+table { width:100%; border-collapse: collapse; margin-top:10px; }
+th, td { padding:12px; border-bottom:1px solid #ddd; text-align:left; }
+th { background:#2b6cb0; color:white; }
+tr:hover { background:#f1f1f1; }
+.search-box input { width:300px; padding:10px; border-radius:6px; border:1px solid #ccc; }
+.message { background:#eef; padding:10px; margin-bottom:5px; border-radius:6px; }
+.message.dark { background:#3c3c5a; color:#eee; }
+#notifPanel { display:none; position:fixed; top:20px; right:20px; width:300px; max-height:400px; overflow-y:auto; background:white; border:1px solid #ccc; border-radius:10px; padding:15px; box-shadow:0 0 10px rgba(0,0,0,0.2); z-index:9999; transition:0.3s; }
+#notifPanel.dark { background:#2c2c3d; color:#eee; border:1px solid #555; }
+.top-bar { position:fixed; top:0; right:0; left:220px; height:50px; display:flex; justify-content:flex-end; align-items:center; padding:0 20px; background:#f4f6fb; box-shadow:0 2px 5px rgba(0,0,0,0.1); transition:0.3s; }
+.top-bar.dark { background:#1e1e2f; }
+.top-bar button { margin-left:10px; width:auto; }
+.time-display { margin-left:20px; font-weight:bold; }
+@media(max-width:768px){
+  .sidebar{width:100%; height:auto; position:relative;}
+  .main{margin-left:0;}
+  .top-bar{left:0;}
+}
+</style>
+</head>
+<body>
+
+<audio id="notifSound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
+
+<div class="sidebar" id="sidebar">
+  <h2>Pharmacy</h2>
+  <a href="dashboard.html">🏠 Dashboard</a>
+  <a href="#" onclick="showSection('drugs')">💊 Drugs</a>
+  <a href="#" onclick="showSection('payments')">💰 Payments</a>
+  <a href="#" onclick="showSection('prescriptions')">📝 Prescriptions</a>
+  <a href="#" onclick="showSection('messages')">💬 Messages</a>
+  <a href="#" onclick="toggleNotificationPanel()">🔔 Notifications</a>
+  <a href="#" onclick="logout()">🚪 Logout</a>
+</div>
+
+<div class="top-bar" id="topBar">
+  <div class="time-display" id="currentTime"></div>
+  <button onclick="toggleDarkMode()">🌓 Mode</button>
+</div>
+
+<div class="main" id="mainContent">
+  <h1>Pharmacy Dashboard</h1>
+  <p style="text-align:center;">Welcome, <b id="userRole">Pharmacist</b></p>
+
+  <!-- Drugs Section -->
+  <div id="drugs" class="card section">
+    <h2>Add / Edit Drug</h2>
+    <label>Drug Name</label>
+    <input type="text" id="drugName">
+    <label>Type</label>
+    <input type="text" id="drugType">
+    <label>Price</label>
+    <input type="number" id="drugPrice">
+    <label>Expiration Date</label>
+    <input type="date" id="drugExpiry">
+    <button onclick="addDrug()">Save Drug</button>
+
+    <div class="search-box">
+      <input type="text" id="searchDrug" placeholder="Search drug..." onkeyup="searchDrug()">
+    </div>
+
+    <table id="drugTable">
+      <thead>
+        <tr><th>Name</th><th>Type</th><th>Price</th><th>Expiry</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="drugData"></tbody>
+    </table>
+    <h3>Total Price of Stock: <span id="totalPrice">0</span></h3>
+  </div>
+
+  <!-- Payments Section -->
+  <div id="payments" class="card section">
+    <h2>Patient Payment</h2>
+    <label>Select Patient</label>
+    <select id="patientSelect" onchange="fillPatientInfo()"><option value="">Select Patient</option></select>
+    <label>Patient Name</label>
+    <input type="text" id="patientName">
+    <label>Drug Name</label>
+    <select id="paymentDrugSelect" onchange="fillDrugInfo()"><option value="">Select Drug</option></select>
+    <label>Quantity</label>
+    <input type="number" id="paymentQty" oninput="updateTotal()">
+    <h4>Total: $<span id="paymentTotal">0.00</span></h4>
+    <button onclick="processPayment()">Process Payment</button>
+    <button onclick="printVoucher()">Export Voucher</button>
+    <div id="paymentLog" style="margin-top:10px;"></div>
+    <button onclick="exportDailyReport()">Export Daily Report to Finance</button>
+  </div>
+
+  <!-- Prescriptions Section -->
+  <div id="prescriptions" class="card section">
+    <h2>Drug Prescriptions</h2>
+    <label>Select Patient</label>
+    <select id="prescPatientSelect" onchange="filterPrescriptions()"><option value="">Select Patient</option></select>
+    <table id="prescTable">
+      <thead>
+        <tr><th>Patient</th><th>Drug</th><th>Instructions</th><th>Date</th></tr>
+      </thead>
+      <tbody id="prescData"></tbody>
+    </table>
+  </div>
+
+  <!-- Messages Section -->
+  <div id="messages" class="card section">
+    <h2>Messages</h2>
+    <label>Send To (Staff Role)</label>
+    <select id="recipientRole">
+      <option value="">Select Role</option>
+      <option value="Doctor">Doctor</option>
+      <option value="Nurse">Nurse</option>
+      <option value="Admin">Admin</option>
+      <option value="Laboratory">Laboratory</option>
+    </select>
+    <textarea id="msgContent" rows="2" placeholder="Type message..." onkeydown="if(event.key==='Enter'){event.preventDefault(); sendMessage();}"></textarea>
+    <button onclick="sendMessage()">Send</button>
+    <div id="messagesContainer" style="max-height:200px; overflow-y:auto; margin-top:10px;"></div>
+  </div>
+</div>
+
+<div id="notifPanel">
+  <h3>Notifications</h3>
+  <button onclick="clearNotifications()">Clear</button>
+  <div id="notifList"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ----------------- INIT -----------------
+let currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "John Doe", role: "Pharmacist" };
+document.getElementById("userRole").innerText = currentUser.role;
+
+// Data
+let drugs = JSON.parse(localStorage.getItem("clinicDrugs")) || [];
+let patients = JSON.parse(localStorage.getItem("clinicPatients")) || [];
+let payments = JSON.parse(localStorage.getItem("pharmacyPayments")) || [];
+let prescriptions = JSON.parse(localStorage.getItem("pharmacyPrescriptions")) || [];
+let messages = JSON.parse(localStorage.getItem("pharmacyMessages")) || [];
+let notifications = JSON.parse(localStorage.getItem("pharmacyNotifications")) || [];
+let dailyReport = JSON.parse(localStorage.getItem("pharmacyDailyReport")) || [];
+
+// ----------------- TIME -----------------
+function updateTime(){ document.getElementById("currentTime").innerText=new Date().toLocaleTimeString(); }
+setInterval(updateTime,1000);
+
+// ----------------- SECTIONS -----------------
+function showSection(sec){ document.querySelectorAll(".section").forEach(s=>s.style.display="none"); document.getElementById(sec).style.display="block"; }
+
+// ----------------- DARK MODE -----------------
+function toggleDarkMode(){
+    document.body.classList.toggle("dark");
+    document.getElementById("sidebar").classList.toggle("dark");
+    document.getElementById("topBar").classList.toggle("dark");
+    document.querySelectorAll(".card").forEach(c=>c.classList.toggle("dark"));
+    document.querySelectorAll(".message").forEach(m=>m.classList.toggle("dark"));
+}
+
+// ----------------- PATIENT & DRUG LOADING -----------------
+function loadPatientsAndDrugs(){
+    const patientSel = document.getElementById("patientSelect");
+    const prescSel = document.getElementById("prescPatientSelect");
+    const drugSel = document.getElementById("paymentDrugSelect");
+    patientSel.innerHTML = prescSel.innerHTML = '<option value="">Select Patient</option>';
+    drugSel.innerHTML = '<option value="">Select Drug</option>';
+    patients.forEach(p=>{
+        const opt=document.createElement("option"); opt.value=p.name; opt.textContent=`${p.name} (${p.age||''} ${p.gender||''})`;
+        patientSel.appendChild(opt); prescSel.appendChild(opt.cloneNode(true));
+    });
+    drugs.forEach(d=>{ const opt=document.createElement("option"); opt.value=d.name; opt.textContent=d.name; drugSel.appendChild(opt); });
+}
+
+// Fill inputs when selection
+function fillPatientInfo(){ document.getElementById("patientName").value=document.getElementById("patientSelect").value; filterPrescriptions(); }
+function fillDrugInfo(){ updateTotal(); }
+
+// ----------------- DRUGS -----------------
+function displayDrugs(){
+    const table=document.getElementById("drugData"); table.innerHTML=""; let total=0;
+    drugs.forEach((d,i)=>{
+        table.innerHTML+=`<tr>
+            <td>${d.name}</td><td>${d.type}</td><td>${d.price}</td><td>${d.expiry}</td>
+            <td><button onclick="editDrug(${i})">Edit</button>
+            <button class="delete" onclick="deleteDrug(${i})">Delete</button></td>
+        </tr>`; total+=parseFloat(d.price);
+    });
+    document.getElementById("totalPrice").innerText=total.toFixed(2);
+    localStorage.setItem("clinicDrugs",JSON.stringify(drugs));
+}
+
+function addDrug(){
+    const name=document.getElementById("drugName").value.trim();
+    const type=document.getElementById("drugType").value.trim();
+    const price=document.getElementById("drugPrice").value;
+    const expiry=document.getElementById("drugExpiry").value;
+    if(!name||!type||!price||!expiry){ alert("Fill all fields"); return; }
+    drugs.push({name,type,price,expiry}); displayDrugs();
+    ["drugName","drugType","drugPrice","drugExpiry"].forEach(id=>document.getElementById(id).value="");
+}
+
+function editDrug(i){
+    const d=drugs[i]; ["drugName","drugType","drugPrice","drugExpiry"].forEach(id=>document.getElementById(id).value=d[id.replace("drug","").toLowerCase()]);
+    deleteDrug(i);
+}
+function deleteDrug(i){ if(confirm("Delete this drug?")){ drugs.splice(i,1); displayDrugs(); } }
+function searchDrug(){ const val=document.getElementById("searchDrug").value.toLowerCase(); document.querySelectorAll("#drugData tr").forEach(r=>{ r.style.display = r.children[0].textContent.toLowerCase().includes(val) ? "" : "none"; }); }
+
+// ----------------- PAYMENTS -----------------
+function updateTotal(){
+    const drugName=document.getElementById("paymentDrugSelect").value;
+    const qty=parseInt(document.getElementById("paymentQty").value)||0;
+    const drug=drugs.find(d=>d.name===drugName);
+    const total=drug ? drug.price*qty : 0;
+    document.getElementById("paymentTotal").innerText=total.toFixed(2);
+}
+
+function processPayment(){
+    const patient=document.getElementById("patientName").value.trim();
+    const drugName=document.getElementById("paymentDrugSelect").value;
+    const qty=parseInt(document.getElementById("paymentQty").value);
+    if(!patient||!drugName||!qty){ alert("Fill all fields"); return; }
+    const drug=drugs.find(d=>d.name===drugName);
+    if(!drug){ alert("Drug not found"); return; }
+    const total=drug.price*qty;
+    const payment={patient,drug:drugName,qty,total,date:new Date().toLocaleString()};
+    payments.push(payment);
+    dailyReport.push(payment);
+    localStorage.setItem("pharmacyPayments",JSON.stringify(payments));
+    localStorage.setItem("pharmacyDailyReport",JSON.stringify(dailyReport));
+    document.getElementById("paymentLog").innerText=`Payment: ${patient} bought ${qty} x ${drugName} = $${total.toFixed(2)}`;
+    ["paymentQty"].forEach(id=>document.getElementById(id).value=""); updateTotal();
+}
+
+// Export individual voucher
+function printVoucher(){
+    const patient=document.getElementById("patientName").value;
+    const records=payments.filter(p=>p.patient===patient);
+    if(records.length===0){ alert("No records"); return; }
+    const ws=XLSX.utils.json_to_sheet(records);
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Voucher");
+    XLSX.writeFile(wb,`${patient}_Voucher.xlsx`);
+}
+
+// Export daily report for finance
+function exportDailyReport(){
+    if(dailyReport.length===0){ alert("No daily records"); return; }
+    const ws=XLSX.utils.json_to_sheet(dailyReport);
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"DailyReport");
+    XLSX.writeFile(wb,`Pharmacy_Daily_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ----------------- PRESCRIPTIONS -----------------
+function filterPrescriptions(){
+    const sel=document.getElementById("prescPatientSelect");
+    const patient=sel.value;
+    const table=document.getElementById("prescData"); table.innerHTML="";
+    prescriptions.filter(p=>!patient || p.patient===patient).forEach(p=>{
+        table.innerHTML+=`<tr><td>${p.patient}</td><td>${p.drug}</td><td>${p.instructions}</td><td>${p.date}</td></tr>`;
+    });
+}
+
+// ----------------- MESSAGES -----------------
+function displayMessages(){
+    const container=document.getElementById("messagesContainer");
+    container.innerHTML=""; messages.forEach(m=>{ container.innerHTML+=`<div class="message"><strong>${m.from}</strong> ➤ ${m.to} [${m.timestamp}]: ${m.content}</div>`; });
+}
+function sendMessage(){
+    const msg=document.getElementById("msgContent").value.trim();
+    const toRole=document.getElementById("recipientRole").value;
+    if(!msg||!toRole){ alert("Select recipient & type message"); return; }
+    messages.push({from:currentUser.role,to:toRole,content:msg,timestamp:new Date().toLocaleString()});
+    localStorage.setItem("pharmacyMessages",JSON.stringify(messages));
+    document.getElementById("msgContent").value=""; displayMessages(); addNotification(`Message sent to ${toRole}`);
+}
+
+// ----------------- NOTIFICATIONS -----------------
+function toggleNotificationPanel(){ const panel=document.getElementById('notifPanel'); panel.style.display=panel.style.display==='none'?'block':'none'; }
+function addNotification(text){ notifications.push({text,time:new Date().toLocaleString()}); localStorage.setItem("pharmacyNotifications",JSON.stringify(notifications)); renderNotifications(); document.getElementById("notifSound").play(); }
+function renderNotifications(){ const list=document.getElementById("notifList"); list.innerHTML=""; notifications.forEach(n=>{ list.innerHTML+=`<div style="border-bottom:1px solid #ddd;padding:5px;">${n.text}<br><small>${n.time}</small></div>`; }); }
+function clearNotifications(){ notifications=[]; localStorage.setItem("pharmacyNotifications",JSON.stringify(notifications)); renderNotifications(); }
+
+// ----------------- LOGOUT -----------------
+function logout(){ localStorage.removeItem("currentUser"); alert("Logged out!"); location.href="login.html"; }
+
+// ----------------- AUTO REFRESH -----------------
+setInterval(()=>{ displayDrugs(); displayMessages(); renderNotifications(); filterPrescriptions(); loadPatientsAndDrugs(); updateTime(); updateTotal(); },1000);
+
+// ----------------- INIT -----------------
+showSection("drugs");
+displayDrugs();
+displayMessages();
+renderNotifications();
+filterPrescriptions();
+loadPatientsAndDrugs();
+updateTime();
+</script>
+</body>
+</html>

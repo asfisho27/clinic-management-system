@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinic Finance Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg:#f4f6fb; --panel:#fff; --accent:#2b6cb0; --accent-dark:#1e4a7a;
+  --muted:#666; --danger:#e53e3e; --success:#2f855a; --card-shadow:0 6px 20px rgba(18,38,63,0.08); --radius:10px;
+}
+[data-theme="dark"]{
+  --bg:#0f1724; --panel:#0b1220; --accent:#2563eb; --accent-dark:#1e3a8a;
+  --muted:#9aa6b2; --card-shadow:0 6px 20px rgba(0,0,0,0.6);
+}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--muted);}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;transition:0.3s;}
+
+/* SIDEBAR */
+.sidebar{background:var(--accent-dark);color:white;padding:20px;}
+.sidebar .brand{font-weight:700;font-size:20px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.sidebar .sb-links a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:6px;color:white;text-decoration:none;transition:0.2s;}
+.sidebar .sb-links a:hover{transform:translateX(6px);background:rgba(255,255,255,0.08);}
+
+/* TOPBAR */
+.topbar{background:var(--panel);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--card-shadow);position:sticky;top:0;z-index:10;}
+.topbar .right{display:flex;align-items:center;gap:15px;}
+
+/* MAIN GRID */
+.main{padding:18px;overflow:auto;}
+.grid{display:grid;grid-template-columns:1fr;gap:18px;}
+.card{background:var(--panel);border-radius:var(--radius);padding:14px;box-shadow:var(--card-shadow);}
+.section{display:none;}
+
+/* STATS CARDS */
+.stats{display:flex;gap:10px;flex-wrap:wrap;}
+.stat-card{flex:1;background:var(--accent);color:white;border-radius:var(--radius);padding:12px;text-align:center;min-width:120px;}
+.stat-card h3{margin:0;font-size:16px;}
+.stat-card p{margin:4px 0;font-size:20px;font-weight:600;}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{padding:10px;border-bottom:1px solid #e9eef6;text-align:left;font-size:13px;}
+th{background:var(--accent);color:white;border-radius:4px;}
+tr:hover{background:rgba(0,0,0,0.02);}
+
+/* MESSAGES */
+.conv{height:250px;overflow:auto;padding:8px;border-radius:8px;border:1px solid #e6edf6;background:transparent;margin-top:8px;}
+.bubble{padding:10px;border-radius:10px;margin-bottom:8px;max-width:78%;}
+.from-me{background:linear-gradient(90deg,var(--accent),var(--accent-dark));color:white;margin-left:auto;}
+.from-other{background:#eef6ff;color:var(--muted);}
+
+/* NOTIF PANEL */
+#notifPanel{position:fixed;right:18px;bottom:18px;width:320px;max-height:60vh;overflow:auto;z-index:9999;display:none;}
+#notifPanel .card{padding:12px;}
+
+@media(max-width:980px){.app{grid-template-columns:1fr;} .grid{grid-template-columns:1fr;}}
+button{cursor:pointer;border:none;border-radius:6px;padding:6px 12px;color:white;background:var(--accent);transition:0.2s;}
+button:hover{background:var(--accent-dark);}
+input,select,textarea{width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid #ccc;}
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div style="width:40px;height:40px;border-radius:10px;background:white;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800">F</div>
+      <div>Clinic Finance<div class="small">Full Management</div></div>
+    </div>
+    <nav class="sb-links">
+      <a href="#" data-section="payroll" onclick="navigate(event)">💼 Payroll</a>
+      <a href="#" data-section="drugs" onclick="navigate(event)">💊 Drugs</a>
+      <a href="#" data-section="expenses" onclick="navigate(event)">🧾 Expenses</a>
+      <a href="#" data-section="revenue" onclick="navigate(event)">💰 Revenue</a>
+      <a href="#" data-section="reports" onclick="navigate(event)">📊 Reports</a>
+      <a href="#" data-section="messages" onclick="navigate(event)">💬 Messages</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar card">
+      <div><strong>Finance Dashboard</strong></div>
+      <div class="right">
+        <div id="currentTime"></div>
+        <button class="toggle-theme" onclick="toggleTheme()">🌓 Dark/Light</button>
+        <button style="background:#e53e3e;" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats">
+      <div class="stat-card"><h3>Total Payroll</h3><p id="statPayroll">0</p></div>
+      <div class="stat-card"><h3>Total Expenses</h3><p id="statExpenses">0</p></div>
+      <div class="stat-card"><h3>Total Revenue</h3><p id="statRevenue">0</p></div>
+      <div class="stat-card"><h3>Profit</h3><p id="statProfit">0</p></div>
+    </div>
+
+    <div class="grid">
+      <!-- Payroll Section -->
+      <div id="payroll" class="card section">
+        <h2>Payroll</h2>
+        <label>Select Staff:</label>
+        <select id="payStaff"></select>
+        <label>Base Salary (ETB)</label><input type="number" id="baseSalary">
+        <label>Bonus (ETB)</label><input type="number" id="bonus">
+        <label>Allowance (ETB)</label><input type="number" id="allowance">
+        <label>Other Deduction (ETB)</label><input type="number" id="otherDeduction">
+        <label>Tax (%)</label><input type="number" id="taxPct">
+        <label>Deduction (%)</label><input type="number" id="dedPct">
+        <div style="margin-top:6px;">
+          <button onclick="calculatePayroll()">Calculate</button>
+          <button onclick="savePayroll()">Save Payroll</button>
+          <button onclick="exportPayroll()">Export CSV</button>
+        </div>
+        <div style="margin-top:10px;">
+          <p>Gross: <span id="grossVal">0</span></p>
+          <p>Tax: <span id="taxVal">0</span></p>
+          <p>Deduction: <span id="dedVal">0</span></p>
+          <p>Net: <span id="netVal">0</span></p>
+        </div>
+        <h3>Payroll Records</h3>
+        <table><thead><tr><th>#</th><th>Staff</th><th>Gross</th><th>Net</th><th>Actions</th></tr></thead>
+        <tbody id="payrollTable"></tbody></table>
+      </div>
+
+      <!-- Revenue Section -->
+      <div id="revenue" class="card section" style="display:none;">
+        <h2>Revenue</h2>
+        <label>Description</label><input type="text" id="revDesc">
+        <label>Amount (ETB)</label><input type="number" id="revAmount">
+        <button onclick="addRevenue()">Add Revenue</button>
+        <button onclick="exportRevenue()">Export CSV</button>
+        <h3>Revenue List</h3>
+        <table><thead><tr><th>#</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
+        <tbody id="revTable"></tbody></table>
+        <p id="revSummary"></p>
+        <canvas id="revChart" height="200"></canvas>
+      </div>
+
+      <!-- Expenses Section -->
+      <div id="expenses" class="card section" style="display:none;">
+        <h2>Expenses</h2>
+        <label>Description</label><input type="text" id="expDesc">
+        <label>Amount (ETB)</label><input type="number" id="expAmount">
+        <button onclick="addExpense()">Add Expense</button>
+        <button onclick="exportExpenses()">Export CSV</button>
+        <h3>Expense List</h3>
+        <table><thead><tr><th>#</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
+        <tbody id="expenseTable"></tbody></table>
+        <p id="expSummary"></p>
+        <canvas id="expChart" height="200"></canvas>
+      </div>
+
+      <!-- Drugs Section -->
+      <div id="drugs" class="card section" style="display:none;">
+        <h2>Drug Management</h2>
+        <label>Drug Name</label><input type="text" id="drugName">
+        <label>Unit Price</label><input type="number" id="drugPrice">
+        <label>Quantity</label><input type="number" id="drugQty">
+        <button onclick="addOrUpdateDrug()">Add/Update Drug</button>
+        <button onclick="exportDrugs()">Export CSV</button>
+        <h3>Drug List</h3>
+        <table><thead><tr><th>#</th><th>Name</th><th>Price</th><th>Qty</th><th>Total</th><th>Actions</th></tr></thead>
+        <tbody id="drugTable"></tbody></table>
+      </div>
+
+      <!-- Messages Section -->
+      <div id="messages" class="card section" style="display:none;">
+        <h2>Messages</h2>
+        <label>From</label><input type="text" id="msgFrom" placeholder="Sender">
+        <label>To</label><input type="text" id="msgTo">
+        <label>Message</label><textarea id="msgContent"></textarea>
+        <button onclick="sendMsg()">Send</button>
+        <button onclick="exportMessages()">Export CSV</button>
+        <h3>Conversation</h3>
+        <div id="msgList" class="conv"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+//=================== Data =====================
+let staff=[], payrolls=[], revenueList=[], expenses=[], drugs=[], messages=[];
+if(localStorage.getItem('staff')) staff=JSON.parse(localStorage.getItem('staff'));
+if(localStorage.getItem('payrolls')) payrolls=JSON.parse(localStorage.getItem('payrolls'));
+
+//=================== Time =====================
+function updateClock(){document.getElementById('currentTime').innerText=new Date().toLocaleString();}
+setInterval(updateClock,1000); updateClock();
+
+//=================== Theme =====================
+function toggleTheme(){
+  const t=document.body.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.body.setAttribute('data-theme',t);
+}
+
+//=================== Logout =====================
+function logout(){if(confirm('Logout?')) location.href='login.html';}
+
+//=================== Navigation =====================
+function navigate(evt){
+  evt.preventDefault();
+  const section=evt.currentTarget.getAttribute('data-section');
+  document.querySelectorAll('.section').forEach(s=>s.style.display='none');
+  document.getElementById(section).style.display='block';
+  if(section==='revenue') renderRevChart();
+  if(section==='expenses') renderExpChart();
+}
+function populateStaffSelect(){
+  const sel=document.getElementById('payStaff');
+  sel.innerHTML='<option value="">-- Select Staff --</option>';
+  staff.forEach(s=>{sel.innerHTML+=`<option value="${s.id}">${s.fullName}</option>`});
+}
+populateStaffSelect();
+
+//=================== Payroll =====================
+function calculatePayroll(){
+  const staffId=document.getElementById('payStaff').value; if(!staffId){alert('Select staff'); return;}
+  const base=parseFloat(document.getElementById('baseSalary').value)||0;
+  const bonus=parseFloat(document.getElementById('bonus').value)||0;
+  const allowance=parseFloat(document.getElementById('allowance').value)||0;
+  const other=parseFloat(document.getElementById('otherDeduction').value)||0;
+  const taxPct=parseFloat(document.getElementById('taxPct').value)||0;
+  const dedPct=parseFloat(document.getElementById('dedPct').value)||0;
+
+  const gross=base+bonus+allowance;
+  const taxAmt=gross*(taxPct/100);
+  const dedAmt=gross*(dedPct/100)+other;
+  const net=gross-taxAmt-dedAmt;
+
+  document.getElementById('grossVal').innerText=gross.toFixed(2);
+  document.getElementById('taxVal').innerText=taxAmt.toFixed(2);
+  document.getElementById('dedVal').innerText=dedAmt.toFixed(2);
+  document.getElementById('netVal').innerText=net.toFixed(2);
+
+  window._lastPayroll={staffId,gross,taxAmt,dedAmt,net};
+}
+function savePayroll(){
+  if(!window._lastPayroll){alert("Calculate first"); return;}
+  const rec={...window._lastPayroll,id:'P'+Date.now(),time:new Date().toLocaleString()};
+  payrolls.push(rec); localStorage.setItem('payrolls',JSON.stringify(payrolls)); renderPayrollTable();
+}
+function renderPayrollTable(){
+  const tbody=document.getElementById('payrollTable'); tbody.innerHTML='';
+  payrolls.forEach((p,i)=>{
+    const s=staff.find(x=>x.id===p.staffId)||{fullName:'Unknown'};
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${s.fullName}</td><td>${p.gross.toFixed(2)}</td><td>${p.net.toFixed(2)}</td><td><button onclick="deletePayroll(${i})">Del</button></td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('statPayroll').innerText=payrolls.reduce((s,p)=>s+p.net,0).toFixed(2);
+  updateProfit();
+}
+function deletePayroll(i){payrolls.splice(i,1);localStorage.setItem('payrolls',JSON.stringify(payrolls));renderPayrollTable();}
+function exportPayroll(){
+  let csv='Staff,Gross,Net\n';
+  payrolls.forEach(p=>{const s=staff.find(x=>x.id===p.staffId)||{};csv+=`${s.fullName},${p.gross},${p.net}\n`;});
+  downloadCSV(csv,'payroll.csv');
+}
+
+//=================== Revenue =====================
+function addRevenue(){const desc=document.getElementById('revDesc').value.trim();const amt=parseFloat(document.getElementById('revAmount').value)||0;if(!desc||amt<=0){alert('Invalid');return;}revenueList.push({desc,amt});renderRevenue();}
+function renderRevenue(){const tbody=document.getElementById('revTable');tbody.innerHTML='';let total=0;revenueList.forEach((r,i)=>{total+=r.amt;const tr=document.createElement('tr');tr.innerHTML=`<td>${i+1}</td><td>${r.desc}</td><td>${r.amt}</td><td><button onclick="deleteRevenue(${i})">Del</button></td>`;tbody.appendChild(tr);});document.getElementById('revSummary').innerText='Total Revenue: ETB '+total.toFixed(2);document.getElementById('statRevenue').innerText=total.toFixed(2);updateProfit();renderRevChart();}
+function deleteRevenue(i){revenueList.splice(i,1);renderRevenue();}
+function exportRevenue(){let csv='Description,Amount\n';revenueList.forEach(r=>{csv+=`${r.desc},${r.amt}\n`;});downloadCSV(csv,'revenue.csv');}
+function renderRevChart(){const ctx=document.getElementById('revChart').getContext('2d');new Chart(ctx,{type:'bar',data:{labels:revenueList.map(r=>r.desc),datasets:[{label:'Revenue',data:revenueList.map(r=>r.amt),backgroundColor:'rgba(37,99,235,0.7)'}]}});}
+
+//=================== Expenses =====================
+function addExpense(){const desc=document.getElementById('expDesc').value.trim();const amt=parseFloat(document.getElementById('expAmount').value)||0;if(!desc||amt<=0){alert('Invalid');return;}expenses.push({desc,amt});renderExpense();}
+function renderExpense(){const tbody=document.getElementById('expenseTable');tbody.innerHTML='';let total=0;expenses.forEach((e,i)=>{total+=e.amt;const tr=document.createElement('tr');tr.innerHTML=`<td>${i+1}</td><td>${e.desc}</td><td>${e.amt}</td><td><button onclick="deleteExpense(${i})">Del</button></td>`;tbody.appendChild(tr);});document.getElementById('expSummary').innerText='Total Expenses: ETB '+total.toFixed(2);document.getElementById('statExpenses').innerText=total.toFixed(2);updateProfit();renderExpChart();}
+function deleteExpense(i){expenses.splice(i,1);renderExpense();}
+function exportExpenses(){let csv='Description,Amount\n';expenses.forEach(e=>{csv+=`${e.desc},${e.amt}\n`;});downloadCSV(csv,'expenses.csv');}
+function renderExpChart(){const ctx=document.getElementById('expChart').getContext('2d');new Chart(ctx,{type:'bar',data:{labels:expenses.map(e=>e.desc),datasets:[{label:'Expense',data:expenses.map(e=>e.amt),backgroundColor:'rgba(229,62,62,0.7)'}]}});}
+
+//=================== Drugs =====================
+function addOrUpdateDrug(){const name=document.getElementById('drugName').value.trim();const price=parseFloat(document.getElementById('drugPrice').value)||0;const qty=parseInt(document.getElementById('drugQty').value)||0;if(!name||price<=0||qty<=0){alert('Invalid');return;}const exist=drugs.find(d=>d.name===name);if(exist){exist.price=price;exist.qty=qty;}else{drugs.push({name,price,qty});}renderDrugs();}
+function renderDrugs(){const tbody=document.getElementById('drugTable');tbody.innerHTML='';drugs.forEach((d,i)=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${i+1}</td><td>${d.name}</td><td>${d.price}</td><td>${d.qty}</td><td>${(d.price*d.qty).toFixed(2)}</td><td><button onclick="deleteDrug(${i})">Del</button></td>`;tbody.appendChild(tr);});updateProfit();}
+function deleteDrug(i){drugs.splice(i,1);renderDrugs();}
+function exportDrugs(){let csv='Name,Price,Qty,Total\n';drugs.forEach(d=>{csv+=`${d.name},${d.price},${d.qty},${d.price*d.qty}\n`;});downloadCSV(csv,'drugs.csv');}
+
+//=================== Messages =====================
+function sendMsg(){const from=document.getElementById('msgFrom').value.trim();const to=document.getElementById('msgTo').value.trim();const content=document.getElementById('msgContent').value.trim();if(!from||!to||!content){alert('Fill all');return;}messages.push({from,to,content,time:new Date().toLocaleString()});renderMsgs();}
+function renderMsgs(){const conv=document.getElementById('msgList');conv.innerHTML='';messages.forEach(m=>{const div=document.createElement('div');div.className='bubble '+(m.from===document.getElementById('msgFrom').value?'from-me':'from-other');div.innerHTML=`<strong>${m.from}</strong>: ${m.content}<br><small>${m.time}</small>`;conv.appendChild(div);});conv.scrollTop=conv.scrollHeight;}
+function exportMessages(){let csv='From,To,Message,Time\n';messages.forEach(m=>{csv+=`${m.from},${m.to},${m.content},${m.time}\n`;});downloadCSV(csv,'messages.csv');}
+
+//=================== Profit =====================
+function updateProfit(){
+  const totalRevenue=revenueList.reduce((s,r)=>s+r.amt,0);
+  const totalExpenses=expenses.reduce((s,e)=>s+e.amt,0)+payrolls.reduce((s,p)=>s+p.net,0)+drugs.reduce((s,d)=>s+d.price*d.qty,0);
+  const profit=totalRevenue-totalExpenses;
+  document.getElementById('statProfit').innerText=profit.toFixed(2);
+}
+
+//=================== CSV Helper =====================
+function downloadCSV(csv,filename){const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);}
+
+//=================== Initial Render =====================
+renderPayrollTable(); renderRevenue(); renderExpense(); renderDrugs();
+</script>
+</body>
+</html>

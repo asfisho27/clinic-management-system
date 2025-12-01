@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Clinic Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  :root{
+    --bg:#f4f6fb; --panel:#fff; --accent:#2b6cb0; --accent-dark:#1e4a7a;
+    --muted:#586173; --danger:#e53e3e; --success:#2f855a;
+    --card-shadow:0 6px 20px rgba(18,38,63,0.08); --radius:12px;
+    --sidebar-w:280px; --topbar-h:64px;
+  }
+  [data-theme="dark"]{
+    --bg:#0f1724; --panel:#0b1220; --accent:#2563eb; --accent-dark:#1e3a8a;
+    --muted:#9aa6b2; --card-shadow:0 6px 20px rgba(0,0,0,0.6);
+  }
+
+  /* reset & layout */
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Arial,sans-serif;background:var(--bg);color:var(--muted);-webkit-font-smoothing:antialiased;}
+  .app{min-height:100vh;display:flex;flex-direction:column;}
+
+  /* TOPBAR */
+  .topbar{
+    height:var(--topbar-h);
+    background:var(--panel);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px; gap:12px; box-shadow:var(--card-shadow); position:sticky; top:0; z-index:40;
+  }
+  .top-left{display:flex;align-items:center;gap:12px;}
+  .hamburger{
+    display:inline-grid; place-items:center; width:44px;height:44px;border-radius:10px; border:none; background:transparent; cursor:pointer;
+  }
+  .brand{display:flex;gap:12px;align-items:center;font-weight:700;color:var(--muted);}
+  .brand .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));display:grid;place-items:center;color:white;font-weight:800}
+
+  .top-actions{display:flex;align-items:center;gap:10px;}
+  .top-actions > div{position:relative; cursor:pointer; padding:8px; border-radius:8px;}
+  .chip{display:inline-block;padding:4px 7px;border-radius:999px;background:var(--danger);color:white;font-size:12px;animation:pulse 1.2s infinite}
+  @keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.08);}100%{transform:scale(1);}}
+
+  /* MAIN LAYOUT */
+  .layout{display:flex;flex:1; min-height:calc(100vh - var(--topbar-h));overflow:hidden;}
+
+  /* SIDEBAR - desktop & tablet (slide) */
+  .sidebar{
+    width:var(--sidebar-w);
+    background:linear-gradient(180deg,var(--accent),var(--accent-dark));
+    color:white;padding:18px; display:flex; flex-direction:column; gap:12px; transition:transform .28s ease, box-shadow .28s ease;
+    min-width:0; z-index:30;
+  }
+  .sidebar.collapsed{transform:translateX(calc(-1 * (var(--sidebar-w) - 60px))); box-shadow:none;}
+  .sb-scroll{overflow:auto;padding-right:6px;}
+  .brand-small{display:flex;align-items:center;gap:10px}
+  .sb-links{margin-top:6px;display:flex;flex-direction:column;gap:6px}
+  .sb-links a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;color:white;text-decoration:none;font-weight:600}
+  .sb-links a:hover{background:rgba(255,255,255,0.06);transform:translateX(6px)}
+
+  .sidebar .small-note{font-size:13px;opacity:.95}
+
+  /* Home promo inside sidebar */
+  .sb-promo{margin-top:10px;padding:10px;background:rgba(255,255,255,0.08);border-radius:10px}
+  .sb-promo p{margin:0;font-weight:700;font-size:13px;color:white}
+  .sb-promo img{width:100%;border-radius:8px;margin-top:8px;display:block}
+
+  /* CONTENT AREA */
+  .content{flex:1; padding:18px; overflow:auto}
+  .grid{display:grid;grid-template-columns:1fr;gap:18px}
+  .card{background:var(--panel);border-radius:var(--radius);padding:14px;box-shadow:var(--card-shadow)}
+  #dashboardWelcome{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:28px}
+  #dashboardWelcome h2{margin:0;color:var(--muted);font-size:22px}
+  #dashboardWelcome p{margin:0;color:#475569;font-size:16px}
+  #dashboardWelcome img{max-width:720px;width:100%;border-radius:12px;margin-top:8px}
+
+  iframe.content-frame{width:100%;height:68vh;border:none;border-radius:12px}
+
+  /* PANELS (notifications/messages/etc) */
+  .panel{
+    position:fixed; top:var(--topbar-h); right:18px; width:340px; max-height:72vh; overflow:auto; z-index:60; display:none;
+    background:var(--panel); box-shadow:var(--card-shadow); border-radius:12px;padding:12px;
+  }
+  .panel h3{margin:0 0 8px 0; font-size:16px}
+  .conv{height:240px;overflow:auto;padding:8px;border-radius:8px;border:1px solid #e6edf6;background:transparent;margin-top:8px}
+  .bubble{padding:10px;border-radius:10px;margin-bottom:8px;max-width:78%}
+  .from-me{background:linear-gradient(90deg,var(--accent),var(--accent-dark));color:white;margin-left:auto}
+  .from-other{background:#eef6ff;color:var(--muted)}
+
+  /* RESET panel */
+  .reset-input{display:flex;flex-direction:column;gap:8px}
+  .reset-input input{padding:8px;border-radius:6px;border:1px solid #e6edf6}
+
+  /* RESPONSIVE rules */
+  @media (max-width:1024px){
+    :root{--sidebar-w:240px}
+    .sidebar.collapsed{transform:translateX(calc(-1 * (var(--sidebar-w) - 64px)));}
+  }
+
+  /* MOBILE: hide sidebar and use overlay drawer */
+  @media (max-width:900px){
+    .sidebar{position:fixed; left:0; top:var(--topbar-h); height:calc(100vh - var(--topbar-h)); transform:translateX(-110%); box-shadow:0 10px 30px rgba(2,6,23,0.45)}
+    .sidebar.open{transform:translateX(0)}
+    .sidebar.collapsed{transform:translateX(-110%)}
+    .layout{padding-top:0}
+    .content{padding:12px}
+    iframe.content-frame{height:60vh}
+    .panel{right:12px;width:92%;left:12px}
+    .hamburger{display:inline-grid}
+  }
+
+  /* larger screens: hamburger hidden */
+  @media (min-width:901px){
+    .hamburger{display:inline-grid}
+  }
+
+  /* accessibility & buttons */
+  button.icon-btn{background:transparent;border:none;padding:8px;border-radius:8px;cursor:pointer}
+  .small-muted{font-size:13px;color:rgba(255,255,255,0.85)}
+
+  /* tiny screens tweaks */
+  @media (max-width:420px){
+    #dashboardWelcome h2{font-size:18px}
+    #dashboardWelcome p{font-size:14px}
+    .top-actions > div{padding:6px}
+  }
+</style>
+</head>
+<body data-theme="light">
+  <div class="app">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="top-left">
+        <button id="hamburgerBtn" class="hamburger" aria-label="Toggle menu" title="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)">
+            <path d="M3 12h18M3 6h18M3 18h18" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+
+        <div class="brand">
+          <div class="logo">C</div>
+          <div>
+            <div style="font-size:15px;color:var(--muted)">Clinic Dashboard</div>
+            <div style="font-size:12px;color:var(--muted);opacity:.7">Multi-functional management</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:13px;color:var(--muted);margin-right:8px">Time: <strong id="currentTime" style="font-weight:700;color:var(--muted)"></strong></div>
+
+        <div class="top-actions" role="toolbar" aria-label="Topbar actions">
+          <div id="notifBtn" class="icon-btn" title="Notifications">🔔 <span id="notifCount" class="chip" style="display:inline-block;margin-left:6px">0</span></div>
+          <div id="msgBtn" class="icon-btn" title="Messages">💬 <span id="msgCount" class="chip" style="display:inline-block;margin-left:6px">0</span></div>
+          <div id="visitsBtn" class="icon-btn" title="Visits">🧾 <span id="visitsCount" class="chip" style="display:inline-block;margin-left:6px">0</span></div>
+          <div id="aboutBtn" class="icon-btn" title="About">ℹ️</div>
+          <div id="contactBtn" class="icon-btn" title="Contact">📞</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- LAYOUT: SIDEBAR + CONTENT -->
+    <div class="layout">
+      <!-- SIDEBAR -->
+      <aside id="sidebar" class="sidebar collapsed" aria-label="Sidebar navigation">
+        <div class="sb-scroll">
+          <div class="brand-small" style="gap:12px;margin-bottom:8px">
+            <div class="logo" style="width:44px;height:44px">C</div>
+            <div style="line-height:1">
+              <div style="font-weight:700">Clinic Dashboard</div>
+              <div style="font-size:12px;opacity:.95">Multi-functional management</div>
+            </div>
+          </div>
+
+          <div class="sb-promo" role="note">
+            <p>Your Health, Our Priority: Seamless Management Solutions.</p>
+            <img src="images/asfaw.jpg" alt="Clinic" onerror="this.style.display='none'">
+          </div>
+
+          <nav class="sb-links" role="navigation" aria-label="Main">
+            <a href="#" data-page="welcome.html">🏠 Home</a>
+            <a href="#" data-page="patient.html">🧑 Patient</a>
+            <a href="#" data-page="visits.html">📋 Visits</a>
+            <a href="#" data-page="finance.html">💰 Finance</a>
+            <a href="#" data-page="pharmacy.html">💊 Pharmacy</a>
+            <a href="#" data-page="staff.html">👥 Staff</a>
+            <a href="#" data-page="drug.html">💊 Drug</a>
+            <a href="#" data-page="laboratory.html">🧪 Laboratory</a>
+            <a href="#" data-page="about.html">ℹ Shared About</a>
+            <a href="#" data-toggle="reset">🔑 Reset Password</a>
+          </nav>
+
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+            <button id="themeToggle" class="icon-btn" aria-pressed="false" title="Toggle theme">🌓 Theme</button>
+            <button id="logoutBtn" style="background:rgba(255,255,255,0.12);color:white;border:none;padding:10px;border-radius:8px;cursor:pointer">Logout</button>
+            <div style="margin-top:8px;font-size:13px">User: <strong id="userName">user</strong> <br/> Role: <strong id="userRole">role</strong></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CONTENT -->
+      <main class="content" id="mainContent" tabindex="-1">
+        <div class="grid">
+          <div id="dashboardWelcome" class="card">
+            <h2>Welcome to Our Clinic</h2>
+            <p>Manage patients, visits, pharmacy, finance, staff, and more.</p>
+            <p style="font-weight:700; color:#1f2937; margin-top:8px">Your Health, Our Priority: Seamless Management Solutions.</p>
+            <img src="images/asfaw.jpg" alt="Clinic Image" style="max-width:880px;width:100%;border-radius:12px; margin-top:12px" onerror="this.style.display='none'">
+          </div>
+
+          <iframe id="contentFrame" class="content-frame card" name="contentFrame" src="welcome.html" title="Content area"></iframe>
+        </div>
+      </main>
+    </div>
+
+    <!-- PANELS -->
+    <div id="notifPanel" class="panel" aria-hidden="true">
+      <h3>Notifications <button style="float:right" onclick="clearNotifications()">Clear</button></h3>
+      <div id="notifList"></div>
+    </div>
+
+    <div id="messagesPanel" class="panel" aria-hidden="true">
+      <h3>Messages</h3>
+      <div class="conv" id="chatMessages"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="chatInput" placeholder="Type message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #e6edf6"/>
+        <button onclick="sendMessage()" style="padding:8px 12px;border-radius:8px;background:var(--accent);color:white;border:none">Send</button>
+      </div>
+    </div>
+
+    <div id="visitsPanel" class="panel" aria-hidden="true">
+      <h3>Visits</h3>
+      <div id="visitList"></div>
+    </div>
+
+    <div id="aboutPanel" class="panel" aria-hidden="true">
+      <h3>About</h3>
+      <iframe src="about.html" style="width:100%;height:300px;border:none;"></iframe>
+    </div>
+
+    <div id="contactPanel" class="panel" aria-hidden="true">
+      <h3>Contact</h3>
+      <iframe src="contact.html" style="width:100%;height:300px;border:none;"></iframe>
+    </div>
+
+    <div id="resetPanel" class="panel" aria-hidden="true">
+      <h3>Reset Password</h3>
+      <div class="reset-input">
+        <input type="text" id="resetUsername" placeholder="Enter Username">
+        <input type="password" id="resetNewPass" placeholder="New Password">
+        <input type="password" id="resetConfirmPass" placeholder="Confirm Password">
+        <button onclick="resetUserPassword()" style="background:var(--accent);color:white;padding:8px;border-radius:8px;border:none">Reset</button>
+        <div id="resetMsg" style="margin-top:10px;color:red;"></div>
+      </div>
+    </div>
+
+  </div> <!-- app -->
+<script>
+  // ------------------- LOCAL STORAGE USERS -------------------
+  if(!localStorage.getItem('users')){
+    localStorage.setItem('users', JSON.stringify({
+      admin:{password:'admin123',role:'admin'},
+      finance:{password:'finance123',role:'finance'},
+      drug:{password:'drug123',role:'drug'},
+      patient:{password:'patient123',role:'patient'},
+      laboratory:{password:'lab123',role:'laboratory'},
+      shared:{password:'shared123',role:'shared'},
+      pharmacy:{password:'pharm123',role:'pharmacy'},
+      staff:{password:'staff123',role:'staff'}
+    }));
+  }
+
+  // mock logged in (remove if handled elsewhere)
+  if(!localStorage.getItem('loggedIn')){
+    // keep existing login flow — here we assume someone already logged in
+    // localStorage.setItem('loggedIn', '1'); localStorage.setItem('loggedInUser', JSON.stringify({username:'admin',role:'admin'}));
+  }
+
+  let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser')||'{}');
+  if(!localStorage.getItem('loggedIn') || !loggedInUser.username){
+    // if not logged in, go to login (existing behavior)
+    try{ /* do not redirect during dev if login not used */ }catch(e){}
+  } else {
+    document.getElementById('userName').innerText = loggedInUser.username;
+    document.getElementById('userRole').innerText = loggedInUser.role;
+  }
+
+  // ------------------- CLOCK -------------------
+  function updateClock(){ document.getElementById('currentTime').innerText = new Date().toLocaleString(); }
+  setInterval(updateClock,1000); updateClock();
+
+  // ------------------- SIDEBAR TOGGLE (desktop slide + mobile drawer) -------------------
+  const sidebar = document.getElementById('sidebar');
+  const hamburger = document.getElementById('hamburgerBtn');
+  let sidebarOpen = false;
+
+  function openSidebar(){
+    if(window.innerWidth <= 900){
+      sidebar.classList.add('open'); sidebar.classList.remove('collapsed');
+      sidebarOpen = true;
+      createOverlay();
+    } else {
+      sidebar.classList.remove('collapsed'); sidebarOpen = true;
+    }
+  }
+  function closeSidebar(){
+    if(window.innerWidth <= 900){
+      sidebar.classList.remove('open'); sidebar.classList.add('collapsed');
+      sidebarOpen = false;
+      removeOverlay();
+    } else {
+      sidebar.classList.add('collapsed'); sidebarOpen = false;
+    }
+  }
+  function toggleSidebar(){
+    if(sidebarOpen) closeSidebar(); else openSidebar();
+  }
+  hamburger.addEventListener('click', (e)=>{ e.stopPropagation(); toggleSidebar(); });
+
+  // overlay for mobile drawer
+  let overlayEl = null;
+  function createOverlay(){
+    if(overlayEl) return;
+    overlayEl = document.createElement('div');
+    overlayEl.style.position='fixed';
+    overlayEl.style.left=0; overlayEl.style.top='var(--topbar-h)';
+    overlayEl.style.right=0; overlayEl.style.bottom=0;
+    overlayEl.style.background='rgba(0,0,0,0.28)'; overlayEl.style.zIndex=25;
+    overlayEl.addEventListener('click', ()=> closeSidebar());
+    document.body.appendChild(overlayEl);
+  }
+  function removeOverlay(){ if(overlayEl){ overlayEl.remove(); overlayEl=null; } }
+
+  // close sidebar on resize if switching modes
+  window.addEventListener('resize', ()=> {
+    if(window.innerWidth > 900){
+      removeOverlay();
+      sidebar.classList.remove('open'); // ensure visible as slide, or collapsed based on default
+    } else {
+      sidebar.classList.add('collapsed'); // default hidden for small screens
+    }
+  });
+  // initialize
+  if(window.innerWidth <= 900){ sidebar.classList.add('collapsed'); } else { sidebar.classList.remove('collapsed'); sidebarOpen = true; }
+
+  // close panels on outside click
+  document.addEventListener('click', (e)=>{
+    if(!document.getElementById('notifPanel').contains(e.target) && e.target.id !== 'notifBtn') document.getElementById('notifPanel').style.display='none';
+    if(!document.getElementById('messagesPanel').contains(e.target) && e.target.id !== 'msgBtn') document.getElementById('messagesPanel').style.display='none';
+    if(!document.getElementById('visitsPanel').contains(e.target) && e.target.id !== 'visitsBtn') document.getElementById('visitsPanel').style.display='none';
+    if(!document.getElementById('aboutPanel').contains(e.target) && e.target.id !== 'aboutBtn') document.getElementById('aboutPanel').style.display='none';
+    if(!document.getElementById('contactPanel').contains(e.target) && e.target.id !== 'contactBtn') document.getElementById('contactPanel').style.display='none';
+    if(!document.getElementById('resetPanel').contains(e.target) && e.target.getAttribute('data-toggle')!=='reset') document.getElementById('resetPanel').style.display='none';
+  });
+
+  // ------------------- PANEL TOGGLING -------------------
+  function togglePanel(panelId){
+    const el = document.getElementById(panelId);
+    if(!el) return;
+    const shown = el.style.display === 'block';
+    // hide all panels first
+    ['notifPanel','messagesPanel','visitsPanel','aboutPanel','contactPanel','resetPanel'].forEach(id=>{
+      const e = document.getElementById(id);
+      if(e) e.style.display = 'none';
+    });
+    if(!shown){ el.style.display = 'block'; el.setAttribute('aria-hidden','false'); }
+    else { el.style.display = 'none'; el.setAttribute('aria-hidden','true'); }
+  }
+
+  document.getElementById('notifBtn').addEventListener('click', (e)=>{ e.stopPropagation(); togglePanel('notifPanel'); });
+  document.getElementById('msgBtn').addEventListener('click', (e)=>{ e.stopPropagation(); togglePanel('messagesPanel'); });
+  document.getElementById('visitsBtn').addEventListener('click', (e)=>{ e.stopPropagation(); togglePanel('visitsPanel'); });
+  document.getElementById('aboutBtn').addEventListener('click', (e)=>{ e.stopPropagation(); togglePanel('aboutPanel'); });
+  document.getElementById('contactBtn').addEventListener('click', (e)=>{ e.stopPropagation(); togglePanel('contactPanel'); });
+
+  // reset trigger in sidebar
+  document.querySelectorAll('[data-toggle="reset"]').forEach(el=>{
+    el.addEventListener('click', (ev)=>{ ev.preventDefault(); togglePanel('resetPanel'); });
+  });
+
+  // ------------------- NOTIFICATIONS -------------------
+  let notifications = JSON.parse(localStorage.getItem('clinic_notifications')||'[]');
+  function showNotif(text){ notifications.push({text,time:new Date().toLocaleString()}); localStorage.setItem('clinic_notifications',JSON.stringify(notifications)); renderNotifications(); }
+  function renderNotifications(){
+    const w = document.getElementById('notifList'); w.innerHTML='';
+    notifications.slice().reverse().forEach(n=>{
+      const d = document.createElement('div'); d.style.marginBottom='8px';
+      d.innerText = `[${n.time}] ${n.text}`; w.appendChild(d);
+    });
+    document.getElementById('notifCount').innerText = notifications.length;
+  }
+  function clearNotifications(){ notifications=[]; localStorage.setItem('clinic_notifications',JSON.stringify(notifications)); renderNotifications(); }
+  renderNotifications();
+
+  // ------------------- MESSAGES -------------------
+  let messages = JSON.parse(localStorage.getItem('clinic_messages')||'[]');
+  function sendMessage(){
+    const txt = document.getElementById('chatInput');
+    if(!txt || txt.value.trim()==='') return;
+    messages.push({from:'me',text:txt.value,time:new Date().toLocaleString()});
+    localStorage.setItem('clinic_messages',JSON.stringify(messages)); renderMessages(); txt.value=''; showNotif('New message sent');
+  }
+  function renderMessages(){
+    const box = document.getElementById('chatMessages'); if(!box) return; box.innerHTML='';
+    messages.forEach(m=>{
+      const div = document.createElement('div'); div.className = m.from==='me'?'bubble from-me':'bubble from-other'; div.innerText = `${m.text} (${m.time})`; box.appendChild(div);
+    });
+    document.getElementById('msgCount').innerText = messages.length;
+  }
+  renderMessages();
+
+  // ------------------- VISITS -------------------
+  let visits = JSON.parse(localStorage.getItem('clinic_visits')||'[]');
+  function addVisit(patientID,doctor,date){ visits.push({patientID,doctor,date}); localStorage.setItem('clinic_visits',JSON.stringify(visits)); renderVisits(); }
+  function renderVisits(){ const box = document.getElementById('visitList'); box.innerHTML=''; visits.forEach(v=>{ const d = document.createElement('div'); d.innerText = `${v.date} - Patient:${v.patientID} with Dr.${v.doctor}`; box.appendChild(d); }); document.getElementById('visitsCount').innerText = visits.length; }
+  renderVisits();
+
+  // ------------------- NAVIGATION (iframe) -------------------
+  document.querySelectorAll('.sb-links a[data-page]').forEach(a=>{
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      const page = this.getAttribute('data-page');
+      document.getElementById('contentFrame').src = page;
+      // hide welcome card
+      const w = document.getElementById('dashboardWelcome');
+      if(w) w.style.display = 'none';
+      // close mobile drawer automatically
+      if(window.innerWidth <= 900) closeSidebar();
+    });
+  });
+
+  // ------------------- THEME -------------------
+  const themeToggle = document.getElementById('themeToggle');
+  themeToggle.addEventListener('click', ()=>{
+    const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.body.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+    themeToggle.setAttribute('aria-pressed', t === 'dark');
+  });
+  // load saved
+  const saved = localStorage.getItem('theme'); if(saved) document.body.setAttribute('data-theme', saved);
+
+  // ------------------- LOGOUT -------------------
+  document.getElementById('logoutBtn').addEventListener('click', ()=>{
+    if(confirm('Logout?')){ localStorage.removeItem('loggedIn'); localStorage.removeItem('loggedInUser'); location.href='login.html'; }
+  });
+
+  // ------------------- RESET PASSWORD -------------------
+  function resetUserPassword(){
+    const username = document.getElementById('resetUsername').value.trim();
+    const newPass = document.getElementById('resetNewPass').value.trim();
+    const confirmPass = document.getElementById('resetConfirmPass').value.trim();
+    const msg = document.getElementById('resetMsg');
+    if(!username || !newPass || !confirmPass){ msg.style.color='red'; msg.textContent='All fields required'; return; }
+    if(newPass !== confirmPass){ msg.style.color='red'; msg.textContent='Passwords do not match'; return; }
+    let users = JSON.parse(localStorage.getItem('users')||'{}');
+    if(!users[username]){ msg.style.color='red'; msg.textContent='User not found'; return; }
+    users[username].password = newPass; localStorage.setItem('users', JSON.stringify(users));
+    msg.style.color='green'; msg.textContent = `Password for "${username}" updated!`;
+  }
+  window.resetUserPassword = resetUserPassword;
+
+  // ------------------- Utility: show notif from code for dev -------------------
+  window.showNotif = showNotif;
+
+  // ------------------- Accessibility: focus content when iframe loads -------------------
+  document.getElementById('contentFrame').addEventListener('load', ()=>{
+    const f = document.getElementById('contentFrame');
+    try{ f.contentWindow.document.body.focus(); } catch(e){}
+  });
+
+  // expose sendMessage for button inline onclick usage
+  window.sendMessage = sendMessage;
+
+  // ensure panels hidden initially
+  ['notifPanel','messagesPanel','visitsPanel','aboutPanel','contactPanel','resetPanel'].forEach(id=>{
+    const e = document.getElementById(id); if(e) e.style.display = 'none';
+  });
+
+  // keyboard: ESC to close overlay/drawer/panel
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+      closeSidebar();
+      ['notifPanel','messagesPanel','visitsPanel','aboutPanel','contactPanel','resetPanel'].forEach(id=>{
+        const el = document.getElementById(id); if(el) el.style.display='none';
+      });
+    }
+  });
+
+</script>
+</body>
+</html>

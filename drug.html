@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drug Management Dashboard</title>
+
+<!-- jsPDF & SheetJS for export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+/* ---------- GENERAL ---------- */
+body { margin:0; font-family:Arial, sans-serif; background:#f4f6fb; transition:0.3s; }
+body.dark { background:#1e1e2f; color:#eee; }
+.sidebar { width:220px; background:#2b6cb0; color:white; height:100vh; position:fixed; padding-top:20px; overflow-y:auto; transition:0.3s; }
+.sidebar h2 { text-align:center; margin-bottom:20px; }
+.sidebar a { display:block; padding:12px 20px; color:white; text-decoration:none; margin-bottom:5px; border-radius:5px; transition:0.3s; }
+.sidebar a:hover { background:#1e4a7a; }
+.sidebar.dark { background:#0d1a33; }
+.main { margin-left:220px; padding:20px; transition:0.3s; }
+.top-bar { position:fixed; top:0; right:0; left:220px; height:50px; display:flex; justify-content:flex-end; align-items:center; padding:0 20px; background:#f4f6fb; box-shadow:0 2px 5px rgba(0,0,0,0.1); transition:0.3s; z-index:1000; }
+.top-bar.dark { background:#1e1e2f; }
+.top-bar button { margin-left:10px; width:auto; cursor:pointer; }
+.time-display { margin-right:20px; font-weight:bold; }
+.card { background:white; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); margin-bottom:30px; transition:0.3s; }
+.card.dark { background:#2c2c3d; color:#eee; }
+h1,h2 { color:#2b6cb0; text-align:center; }
+h1.dark,h2.dark { color:#eee; }
+input, select, textarea, button { width:100%; padding:10px; margin-top:5px; margin-bottom:10px; border-radius:6px; border:1px solid #ddd; }
+button { background:#2b6cb0; color:white; border:none; cursor:pointer; transition:0.3s; }
+button:hover { opacity:0.9; }
+table { width:100%; border-collapse:collapse; margin-top:15px; }
+th, td { padding:12px; border-bottom:1px solid #ddd; text-align:left; }
+th { background:#2b6cb0; color:white; }
+tr:hover { background:#f1f1f1; }
+.badge { padding:2px 6px; border-radius:5px; font-size:0.8em; color:white; }
+.badge.expired { background:red; }
+.badge.lowstock { background:orange; }
+.badge.prescription { background:blue; }
+#notifPanel { display:none; position:fixed; top:60px; right:20px; width:300px; max-height:400px; overflow-y:auto; background:white; border:1px solid #ccc; border-radius:10px; padding:15px; box-shadow:0 0 10px rgba(0,0,0,0.2); z-index:9999; transition:0.3s;}
+#notifPanel.dark { background:#2c2c3d; color:#eee; border:1px solid #555; }
+.message { background:#eef; padding:10px; margin-bottom:5px; border-radius:6px; }
+.message.dark { background:#3c3c5a; color:#eee; }
+.messages-section { max-height:200px; overflow-y:auto; margin-top:10px; }
+@media(max-width:768px){
+  .sidebar{width:100%; height:auto; position:relative;}
+  .main{margin-left:0;}
+  .top-bar{left:0;}
+}
+</style>
+</head>
+<body>
+
+<audio id="notifSound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <h2>Drug Dashboard</h2>
+  <a href="#" onclick="showSection('drugCard')">💊 Drugs</a>
+  <a href="#" onclick="showSection('prescriptionCard')">📝 Prescriptions</a>
+  <a href="#" onclick="showSection('messagesCard')">💬 Messages</a>
+  <a href="#" onclick="toggleNotificationPanel()">🔔 Notifications</a>
+  <a href="#" onclick="logout()">🚪 Logout</a>
+</div>
+
+<!-- TOP BAR -->
+<div class="top-bar" id="topBar">
+  <div class="time-display" id="currentTime"></div>
+  <button onclick="toggleDarkMode()">🌓 Mode</button>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+  <h1>Drug Management Dashboard</h1>
+
+  <!-- DRUG MANAGEMENT -->
+  <div id="drugCard" class="card section">
+    <h2>Add / Edit Drug</h2>
+    <label>Drug Name</label><input type="text" id="drugName">
+    <label>Unit Price (ETB)</label><input type="number" id="drugPrice">
+    <label>Quantity</label><input type="number" id="drugQty">
+    <label>Expiration Date</label><input type="date" id="drugExpiry">
+    <label>Prescription Required?</label>
+    <select id="drugPrescription">
+      <option value="No">No</option>
+      <option value="Yes">Yes</option>
+    </select>
+    <button onclick="addDrug()">Save Drug</button>
+    <button onclick="exportDrugPDF()">Export PDF</button>
+    <button onclick="exportDrugExcel()">Export Excel</button>
+
+    <h2>Drug Inventory</h2>
+    <input type="text" id="searchDrug" placeholder="Search drug..." onkeyup="searchDrug()">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Price/unit</th><th>Qty</th><th>Expiry</th><th>Prescription</th><th>Total</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="drugTable"></tbody>
+    </table>
+    <div>Total Stock Value: <span id="totalStockValue">0</span> ETB</div>
+  </div>
+
+  <!-- PRESCRIPTION -->
+  <div id="prescriptionCard" class="card section">
+    <h2>Prescription</h2>
+    <label>Select Patient</label><select id="prescPatientSelect" onchange="fillPatientInfo()"><option value="">Select Patient</option></select>
+    <label>Patient Name</label><input type="text" id="prescPatient" readonly>
+    <label>Age</label><input type="number" id="prescAge" readonly>
+    <label>Sex</label><input type="text" id="prescSex" readonly>
+    <label>Select Drug</label><select id="prescDrugSelect" onchange="fillDrugInfo()"><option value="">Select Drug</option></select>
+    <label>Instructions</label><textarea id="prescInstructions"></textarea>
+    <label>Quantity</label><input type="number" id="prescQty" value="1">
+    <button onclick="addPrescription()">Add Prescription</button>
+    <button onclick="exportPrescriptionPDF()">Export PDF</button>
+    <button onclick="exportPrescriptionExcel()">Export Excel</button>
+
+    <h3>Prescription List</h3>
+    <table>
+      <thead>
+        <tr><th>Patient</th><th>Drug</th><th>Instructions</th><th>Qty</th><th>Total Cost</th><th>Date</th></tr>
+      </thead>
+      <tbody id="prescTable"></tbody>
+    </table>
+  </div>
+
+  <!-- MESSAGES -->
+  <div id="messagesCard" class="card section">
+    <h2>Messages</h2>
+    <label>Send To (Role)</label>
+    <select id="recipientRole">
+      <option value="">Select Role</option>
+      <option value="Pharmacist">Pharmacist</option>
+      <option value="Doctor">Doctor</option>
+      <option value="Nurse">Nurse</option>
+      <option value="Admin">Admin</option>
+      <option value="Laboratory">Laboratory</option>
+    </select>
+    <textarea id="msgContent" rows="2" placeholder="Type message..." onkeydown="if(event.key==='Enter'){event.preventDefault(); sendMessage();}"></textarea>
+    <button onclick="sendMessage()">Send</button>
+    <div class="messages-section" id="messagesContainer"></div>
+  </div>
+</div>
+
+<div id="notifPanel">
+  <h3>Notifications</h3>
+  <button onclick="clearNotifications()">Clear</button>
+  <div id="notifList"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+
+// ---------- INIT ----------
+let drugs = JSON.parse(localStorage.getItem("drugs")) || [];
+let prescriptions = JSON.parse(localStorage.getItem("prescriptions")) || [];
+let patients = JSON.parse(localStorage.getItem("clinicPatients")) || [];
+let messages = JSON.parse(localStorage.getItem("drugMessages")) || [];
+let notifications = JSON.parse(localStorage.getItem("drugNotifications")) || [];
+
+// ---------- TIME ----------
+function updateTime(){ document.getElementById("currentTime").innerText = new Date().toLocaleString(); }
+setInterval(updateTime,1000);
+
+// ---------- DARK MODE ----------
+function toggleDarkMode(){
+  document.body.classList.toggle("dark");
+  document.getElementById("sidebar").classList.toggle("dark");
+  document.getElementById("topBar").classList.toggle("dark");
+  document.querySelectorAll(".card").forEach(c=>c.classList.toggle("dark"));
+  document.querySelectorAll(".message").forEach(m=>m.classList.toggle("dark"));
+}
+
+// ---------- NOTIFICATIONS ----------
+function addNotification(text){
+  notifications.push({text,time:new Date().toLocaleString()});
+  localStorage.setItem("drugNotifications",JSON.stringify(notifications));
+  renderNotifications();
+  document.getElementById("notifSound").play();
+}
+function renderNotifications(){
+  const list=document.getElementById("notifList"); list.innerHTML="";
+  notifications.forEach(n=>list.innerHTML+=`<div style="border-bottom:1px solid #ddd;padding:5px;">${n.text}<br><small>${n.time}</small></div>`);
+}
+function toggleNotificationPanel(){ const p=document.getElementById("notifPanel"); p.style.display=p.style.display==='none'?'block':'none'; }
+function clearNotifications(){ notifications=[]; localStorage.setItem("drugNotifications",JSON.stringify(notifications)); renderNotifications(); }
+
+// ---------- MESSAGES ----------
+function displayMessages(){
+  const container=document.getElementById("messagesContainer"); container.innerHTML="";
+  messages.forEach(m=>container.innerHTML+=`<div class="message"><strong>${m.from}</strong> ➤ ${m.to} [${m.timestamp}]: ${m.content}</div>`);
+}
+function sendMessage(){
+  const msg=document.getElementById("msgContent").value.trim();
+  const toRole=document.getElementById("recipientRole").value;
+  if(!msg||!toRole){ alert("Select recipient & type message"); return; }
+  messages.push({from:"Pharmacy",to:toRole,content:msg,timestamp:new Date().toLocaleString()});
+  localStorage.setItem("drugMessages",JSON.stringify(messages));
+  document.getElementById("msgContent").value="";
+  displayMessages();
+  addNotification(`Message sent to ${toRole}`);
+}
+
+// ---------- SECTION CONTROL ----------
+function showSection(sec){ document.querySelectorAll(".section").forEach(s=>s.style.display="none"); document.getElementById(sec).style.display="block"; }
+
+// ---------- DRUG FUNCTIONS ----------
+function displayDrugs(){
+  const t=document.getElementById("drugTable"); t.innerHTML=""; let total=0;
+  const today=new Date();
+  drugs.forEach((d,i)=>{
+    const expDate=new Date(d.expiry);
+    const value=d.price*d.quantity; total+=value;
+    const badgeExp=expDate<today?'<span class="badge expired">Expired</span>':'';
+    const badgePresc=d.prescription==='Yes'?'<span class="badge prescription">Rx</span>':'';
+    const badgeLow=d.quantity<5?'<span class="badge lowstock">Low</span>':'';
+    t.innerHTML+=`<tr>
+      <td>${d.name} ${badgeExp}${badgePresc}${badgeLow}</td><td>${d.price}</td><td>${d.quantity}</td><td>${d.expiry}</td><td>${d.prescription}</td><td>${value}</td>
+      <td><button onclick="editDrug(${i})">Edit</button> <button style="background:red" onclick="deleteDrug(${i})">Delete</button></td>
+    </tr>`;
+  });
+  document.getElementById("totalStockValue").innerText=total;
+  localStorage.setItem("drugs",JSON.stringify(drugs));
+}
+function addDrug(){
+  const name=document.getElementById("drugName").value.trim();
+  const price=Number(document.getElementById("drugPrice").value);
+  const qty=Number(document.getElementById("drugQty").value);
+  const expiry=document.getElementById("drugExpiry").value;
+  const presc=document.getElementById("drugPrescription").value;
+  if(!name||!price||!qty||!expiry){ alert("Fill all fields"); return; }
+  drugs.push({name,price,quantity:qty,expiry,prescription:presc});
+  displayDrugs(); clearDrugForm(); addNotification(`Drug added: ${name}`);
+}
+function clearDrugForm(){ ["drugName","drugPrice","drugQty","drugExpiry","drugPrescription"].forEach(id=>document.getElementById(id).value=(id==="drugPrescription"?"No":"")); }
+function editDrug(i){ const d=drugs[i]; document.getElementById("drugName").value=d.name; document.getElementById("drugPrice").value=d.price; document.getElementById("drugQty").value=d.quantity; document.getElementById("drugExpiry").value=d.expiry; document.getElementById("drugPrescription").value=d.prescription; drugs.splice(i,1); displayDrugs(); }
+function deleteDrug(i){ if(confirm("Delete?")){ drugs.splice(i,1); displayDrugs(); addNotification(`Drug deleted`); } }
+function searchDrug(){ const val=document.getElementById("searchDrug").value.toLowerCase(); document.querySelectorAll("#drugTable tr").forEach(r=>r.style.display=r.children[0].textContent.toLowerCase().includes(val)?"":"none"); }
+
+// ---------- PRESCRIPTION ----------
+function loadPatients(){
+  const sel=document.getElementById("prescPatientSelect"); sel.innerHTML='<option value="">Select Patient</option>';
+  patients.forEach((p,i)=>sel.innerHTML+=`<option value="${i}">${p.name} (${p.age} ${p.sex})</option>`);
+}
+function fillPatientInfo(){
+  const idx=document.getElementById("prescPatientSelect").value; if(idx==="") return;
+  const p=patients[idx];
+  document.getElementById("prescPatient").value=p.name;
+  document.getElementById("prescAge").value=p.age;
+  document.getElementById("prescSex").value=p.sex;
+  populateDrugDropdown(p);
+}
+function populateDrugDropdown(patient){
+  const sel=document.getElementById("prescDrugSelect"); sel.innerHTML='<option value="">Select Drug</option>';
+  const today=new Date();
+  drugs.forEach((d,i)=>{
+    const exp=new Date(d.expiry); if(exp<today) return;
+    sel.innerHTML+=`<option value="${i}">${d.name} (${d.quantity} left)</option>`;
+  });
+}
+function fillDrugInfo(){
+  const idx=document.getElementById("prescDrugSelect").value; if(idx==="") return;
+  const d=drugs[idx];
+  document.getElementById("prescInstructions").value=`Take ${d.name} as prescribed`;
+}
+function addPrescription(){
+  const pName=document.getElementById("prescPatient").value;
+  const dIdx=document.getElementById("prescDrugSelect").value;
+  const qty=Number(document.getElementById("prescQty").value);
+  const instr=document.getElementById("prescInstructions").value;
+  if(!pName||dIdx==="") return alert("Select patient & drug");
+  const drug=drugs[dIdx]; if(drug.quantity<qty) return alert("Not enough stock");
+  drug.quantity-=qty; const total=qty*drug.price;
+  prescriptions.push({patient:pName,drug:drug.name,dosage:instr,qty,total,date:new Date().toLocaleString()});
+  displayDrugs(); displayPrescriptions(); addNotification(`Prescription added for ${pName}`);
+  document.getElementById("prescQty").value=1; document.getElementById("prescInstructions").value="";
+  localStorage.setItem("drugs",JSON.stringify(drugs)); localStorage.setItem("prescriptions",JSON.stringify(prescriptions));
+}
+function displayPrescriptions(){
+  const t=document.getElementById("prescTable"); t.innerHTML="";
+  prescriptions.forEach(p=>t.innerHTML+=`<tr><td>${p.patient}</td><td>${p.drug}</td><td>${p.dosage}</td><td>${p.qty}</td><td>${p.total}</td><td>${p.date}</td></tr>`);
+}
+
+// ---------- EXPORT ----------
+function exportPDF(data,title){ const { jsPDF }=window.jspdf; const doc=new jsPDF(); doc.text(title,14,20); let y=30; data.forEach(d=>{doc.text(JSON.stringify(Object.values(d)),14,y); y+=10;}); doc.save(`${title}.pdf`);}
+function exportExcel(data,title){ const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,title); XLSX.writeFile(wb,`${title}.xlsx`);}
+function exportDrugPDF(){exportPDF(drugs,"Drug Inventory");}
+function exportDrugExcel(){exportExcel(drugs,"Drug Inventory");}
+function exportPrescriptionPDF(){exportPDF(prescriptions,"Prescriptions");}
+function exportPrescriptionExcel(){exportExcel(prescriptions,"Prescriptions");}
+
+// ---------- LOGOUT ----------
+function logout(){ localStorage.removeItem("currentUser"); alert("Logged out"); location.href="login.html"; }
+
+// ---------- AUTO REFRESH ----------
+setInterval(()=>{ displayDrugs(); displayPrescriptions(); displayMessages(); renderNotifications(); },1000);
+
+// ---------- INIT ----------
+showSection("drugCard"); displayDrugs(); displayPrescriptions(); displayMessages(); renderNotifications(); loadPatients(); updateTime();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Clinic Staff Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#fff; --accent:#2b6cb0; --accent-dark:#1e4a7a;
+  --muted:#666; --danger:#e53e3e; --success:#2f855a;
+  --card-shadow:0 6px 20px rgba(18,38,63,0.08); --radius:10px;
+}
+[data-theme="dark"]{
+  --bg:#0f1724; --panel:#0b1220; --accent:#2563eb; --accent-dark:#1e3a8a;
+  --muted:#9aa6b2; --card-shadow:0 6px 20px rgba(0,0,0,0.6);
+}
+body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--muted);}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{background:linear-gradient(180deg,var(--accent),var(--accent-dark));color:white;padding:20px;position:fixed;height:100vh;}
+.sidebar .brand{font-weight:700;font-size:20px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.sidebar .sb-links a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:6px;color:white;text-decoration:none;transition:0.2s;}
+.sidebar .sb-links a:hover, .sidebar .sb-links a.active{transform:translateX(6px);background:rgba(0,0,0,0.08);}
+.sidebar .controls{margin-top:20px;}
+.toggle-sidebar{background:rgba(255,255,255,0.12);border:none;color:white;padding:8px;border-radius:8px;cursor:pointer;}
+.chip{display:inline-block;padding:4px 7px;border-radius:999px;background:red;color:white;font-size:12px;animation: pulse 1.2s infinite;}
+@keyframes pulse{0%{transform:scale(1);}50%{transform:scale(1.1);}100%{transform:scale(1);}}
+
+/* TOPBAR */
+.topbar{background:var(--panel);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--card-shadow);position:sticky;top:0;z-index:10;}
+.topbar .actions{display:flex;gap:10px;align-items:center;}
+.topbar .actions button{cursor:pointer;}
+
+/* MAIN */
+.main{margin-left:260px;padding:18px;}
+.grid{display:grid;grid-template-columns:1fr 420px;gap:18px;}
+.card{background:var(--panel);border-radius:var(--radius);padding:14px;box-shadow:var(--card-shadow);}
+.section{display:block;}
+
+/* TABLES */
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th,td{padding:10px;border-bottom:1px solid #e9eef6;text-align:left;font-size:13px;}
+th{background:var(--accent);color:white;border-radius:4px;}
+tr:hover{background:rgba(0,0,0,0.02);}
+
+/* MESSAGES */
+.conv{height:200px;overflow:auto;padding:8px;border-radius:8px;border:1px solid #e6edf6;background:transparent;margin-top:8px;}
+.bubble{padding:10px;border-radius:10px;margin-bottom:8px;max-width:78%;}
+.from-me{background:linear-gradient(90deg,var(--accent),var(--accent-dark));color:white;margin-left:auto;}
+.from-other{background:#eef6ff;color:var(--muted);}
+
+/* NOTIF PANEL */
+#notifPanel{position:fixed;right:18px;bottom:18px;width:320px;max-height:60vh;overflow:auto;z-index:9999;display:none;}
+#notifPanel .card{padding:12px;}
+.btn{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;margin-right:5px;transition:0.2s;}
+.btn-edit{background:#3b82f6;color:#fff;}
+.btn-edit:hover{background:#2563eb;}
+.btn-delete{background:#ef4444;color:#fff;}
+.btn-delete:hover{background:#dc2626;}
+.btn-terminate{background:#f97316;color:#fff;}
+.btn-terminate:hover{background:#ea580c;}
+.profile-preview{width:50px;height:50px;border-radius:50%;object-fit:cover;}
+.pagination{margin-top:10px;display:flex;justify-content:center;gap:5px;flex-wrap:wrap;}
+.pagination button{padding:6px 10px;border:none;border-radius:6px;cursor:pointer;background:#3b82f6;color:#fff;transition:0.2s;}
+.pagination button:hover{background:#2563eb;}
+.pagination button.active{background:#10b981;}
+.top-controls{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.top-controls input,.top-controls select{padding:8px;border-radius:6px;border:1px solid #ccc;transition:0.2s;}
+.top-controls input:focus,.top-controls select:focus{border-color:#3b82f6;outline:none;}
+.top-controls button{background:#10b981;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:0.2s;}
+.top-controls button:hover{background:#059669;}
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">Clinic Dashboard</div>
+    <nav class="sb-links">
+      <a href="dashboard.html" class="active">🏠 Dashboard</a>
+      <a href="staff.html">👥 Staff</a>
+      <a href="drug.html">💊 Drugs</a>
+      <a href="finance.html">💰 Finance</a>
+      <a href="pharmacy.html">💊 Pharmacy</a>
+      <a href="laboratory.html">🧪 Laboratory</a>
+      <a href="contact.html">📞 Contact</a>
+      <a href="about.html">ℹ️ About</a>
+    </nav>
+    <div class="controls">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;">
+        <button class="toggle-sidebar" onclick="toggleTheme()">🌓</button>
+        <button class="btn" onclick="logout()">Logout</button>
+      </div>
+      <div style="margin-top:10px;color:white;"><span id="currentTime"></span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar card">
+      <div><strong>Staff Dashboard (Admin Control)</strong></div>
+      <div class="actions">
+        <div id="notifIcon" style="position:relative;cursor:pointer;">🔔 <span id="notifCount" class="chip" style="display:none">0</span></div>
+        <div id="msgIcon" style="position:relative;cursor:pointer;">💬 <span id="msgCount" class="chip" style="display:none">0</span></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Left Panel -->
+      <div>
+        <div class="card section" id="staffSection">
+          <h3>Add / Manage Staff</h3>
+          <form id="staff-form">
+            <label>Full Name</label><input type="text" id="fullName" required>
+            <label>Role</label><select id="role" required onchange="autoAssignDepartment()">
+              <option value="">Select Role</option>
+              <option value="Doctor">Doctor</option>
+              <option value="Nurse">Nurse</option>
+              <option value="Lab Technician">Lab Technician</option>
+              <option value="Pharmacist">Pharmacist</option>
+              <option value="Admin">Admin</option>
+              <option value="Reception">Reception</option>
+            </select>
+            <label>Department/Ward</label><input type="text" id="department">
+            <label>Phone</label><input type="text" id="phone" required>
+            <label>Email</label><input type="email" id="email" required>
+            <label>Staff Type</label>
+            <select id="staffType" required>
+              <option value="">Select Type</option>
+              <option value="Permanent">Permanent</option>
+              <option value="Contract">Contract</option>
+              <option value="Terminated">Terminated</option>
+            </select>
+            <button type="submit">Add Staff</button>
+          </form>
+        </div>
+
+        <div class="card section" id="messagesSection">
+          <h3>Messages</h3>
+          <div class="conv" id="chatMessages"></div>
+          <input type="text" id="chatInput" placeholder="Type message..." style="width:80%;padding:6px;border-radius:6px;border:1px solid #e6edf6"/>
+          <button class="btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div>
+        <div class="card">
+          <h3>Staff Table</h3>
+          <div class="top-controls">
+            <input type="text" id="searchName" placeholder="Search by Name" oninput="filterStaff()">
+            <select id="filterRole" onchange="filterStaff()">
+              <option value="">Filter by Role</option>
+              <option value="Doctor">Doctor</option>
+              <option value="Nurse">Nurse</option>
+              <option value="Lab Technician">Lab Technician</option>
+              <option value="Pharmacist">Pharmacist</option>
+              <option value="Admin">Admin</option>
+              <option value="Reception">Reception</option>
+            </select>
+            <button onclick="exportCSV()">Export CSV</button>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Name</th><th>Role</th><th>Dept</th><th>Phone</th><th>Email</th><th>Type</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="staff-table"></tbody>
+            </table>
+            <div class="pagination" id="pagination"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ------------------- SESSION -------------------
+const loggedUser = JSON.parse(localStorage.getItem('loggedInUser'));
+if(!loggedUser){ alert('Not logged in!'); location.href='login.html'; }
+
+// ------------------- CLOCK -------------------
+function updateClock(){ document.getElementById('currentTime').innerText=new Date().toLocaleString(); }
+setInterval(updateClock,1000); updateClock();
+
+// ------------------- THEME -------------------
+function toggleTheme(){
+  const t = document.body.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.body.setAttribute('data-theme',t); localStorage.setItem('theme',t);
+}
+
+// ------------------- LOGOUT -------------------
+function logout(){ localStorage.removeItem('loggedInUser'); location.href='login.html'; }
+
+// ------------------- STAFF -------------------
+let staffData = JSON.parse(localStorage.getItem('staffData')||'[]'); let editIndex=-1;
+const itemsPerPage = 5; let currentPage=1;
+
+window.onload = () => { renderTable(); renderMessages(); };
+
+function generateStaffID(){ return 'S-'+Math.floor(1000+Math.random()*9000); }
+function autoAssignDepartment(){
+  const role = document.getElementById('role').value;
+  const deptInput = document.getElementById('department');
+  const map = {Doctor:'Medical', Nurse:'Nursing', 'Lab Technician':'Lab', Pharmacist:'Pharmacy', Admin:'Admin', Reception:'Front Desk'};
+  deptInput.value = map[role]||'';
+}
+function showNotification(msg){ alert(msg); }
+
+document.getElementById('staff-form').addEventListener('submit', function(e){
+  e.preventDefault();
+  const fullName=document.getElementById('fullName').value.trim();
+  const role=document.getElementById('role').value;
+  const dept=document.getElementById('department').value.trim();
+  const phone=document.getElementById('phone').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const type=document.getElementById('staffType').value;
+  if(!fullName||!role||!phone||!email||!type){ alert('Fill all fields'); return; }
+  const duplicate = staffData.find(s=>s.email===email && editIndex===-1); if(duplicate){ alert('Staff exists!'); return; }
+  const staff={id:editIndex===-1?generateStaffID():staffData[editIndex].id, fullName, role, dept, phone, email, staffType:type};
+  if(editIndex===-1){ staffData.push(staff); showNotification('Staff added'); } 
+  else { staffData[editIndex]=staff; editIndex=-1; showNotification('Staff updated'); }
+  localStorage.setItem('staffData', JSON.stringify(staffData));
+  renderTable(); document.getElementById('staff-form').reset();
+});
+
+// Render table
+function renderTable(filteredData){
+  const data=filteredData||staffData;
+  const tbody=document.getElementById('staff-table'); tbody.innerHTML='';
+  const totalPages=Math.ceil(data.length/itemsPerPage)||1;
+  if(currentPage>totalPages) currentPage=totalPages;
+  const start=(currentPage-1)*itemsPerPage; const end=start+itemsPerPage;
+  const pageData=data.slice(start,end);
+  pageData.forEach((s,i)=>{
+    const row=document.createElement('tr');
+    row.innerHTML=`<td>${s.id}</td><td>${s.fullName}</td><td>${s.role}</td><td>${s.dept}</td><td>${s.phone}</td><td>${s.email}</td><td>${s.staffType}</td>
+    <td>
+      <button class="btn btn-edit" onclick="editStaff(${staffData.indexOf(s)})">Edit</button>
+      <button class="btn btn-delete" onclick="deleteStaff(${staffData.indexOf(s)})">Delete</button>
+      <button class="btn btn-terminate" onclick="terminateStaff(${staffData.indexOf(s)})">Terminate</button>
+      <button class="btn" onclick="printVoucher(${staffData.indexOf(s)})" style="background:#10b981;color:#fff;">Print</button>
+    </td>`;
+    tbody.appendChild(row);
+  });
+  renderPagination(data.length);
+}
+
+// Pagination
+function renderPagination(totalItems){
+  const totalPages=Math.ceil(totalItems/itemsPerPage)||1;
+  const container=document.getElementById('pagination'); container.innerHTML='';
+  for(let i=1;i<=totalPages;i++){
+    const btn=document.createElement('button'); btn.innerText=i; btn.className=i===currentPage?'active':''; 
+    btn.onclick=()=>{ currentPage=i; renderTable(); }; container.appendChild(btn);
+  }
+}
+
+// Edit/Delete/Terminate/Print
+function editStaff(idx){ 
+  const s=staffData[idx]; editIndex=idx;
+  document.getElementById('fullName').value=s.fullName;
+  document.getElementById('role').value=s.role;
+  document.getElementById('department').value=s.dept;
+  document.getElementById('phone').value=s.phone;
+  document.getElementById('email').value=s.email;
+  document.getElementById('staffType').value=s.staffType;
+}
+function deleteStaff(idx){ if(confirm('Delete?')){ staffData.splice(idx,1); localStorage.setItem('staffData',JSON.stringify(staffData)); renderTable(); } }
+function terminateStaff(idx){ if(confirm('Terminate?')){ staffData[idx].staffType='Terminated'; localStorage.setItem('staffData',JSON.stringify(staffData)); renderTable(); } }
+function printVoucher(idx){
+  const s=staffData[idx]; const w=window.open('','',`height=600,width=800`);
+  w.document.write('<h2>Staff Summary Voucher</h2>');
+  w.document.write(`<p>ID: ${s.id}</p><p>Name: ${s.fullName}</p><p>Role: ${s.role}</p><p>Dept: ${s.dept}</p><p>Phone: ${s.phone}</p><p>Email: ${s.email}</p><p>Type: ${s.staffType}</p>`);
+  w.document.close(); w.print();
+}
+function filterStaff(){ 
+  const n=document.getElementById('searchName').value.toLowerCase();
+  const r=document.getElementById('filterRole').value;
+  renderTable(staffData.filter(s=>s.fullName.toLowerCase().includes(n)&&(r===''||s.role===r)));
+}
+function exportCSV(){
+  if(staffData.length===0){ alert('No staff'); return; }
+  const headers=["ID","Name","Role","Dept","Phone","Email","Type"];
+  const rows=staffData.map(s=>[s.id,s.fullName,s.role,s.dept,s.phone,s.email,s.staffType]);
+  const csv="data:text/csv;charset=utf-8,"+[headers,...rows].map(e=>e.join(',')).join('\n');
+  const link=document.createElement('a'); link.setAttribute('href',csv); link.setAttribute('download','staff.csv'); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+// ------------------- MESSAGES -------------------
+let messages = JSON.parse(localStorage.getItem('clinic_messages')||'[]');
+function sendMessage(){
+  const txt=document.getElementById('chatInput'); if(txt.value.trim()==='') return;
+  messages.push({from:'Admin',text:txt.value,ts:new Date().toLocaleString()}); localStorage.setItem('clinic_messages',JSON.stringify(messages));
+  txt.value=''; renderMessages();
+}
+function renderMessages(){
+  const conv=document.getElementById('chatMessages'); conv.innerHTML='';
+  messages.forEach(m=>{
+    const div=document.createElement('div'); div.className='bubble from-'+(m.from==='Admin'?'me':'other'); div.innerText=`${m.from}: ${m.text}`;
+    conv.appendChild(div);
+  });
+}
+renderMessages();
+</script>
+</body>
+</html>

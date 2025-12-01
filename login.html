@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clinic Login</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body {
+  margin:0;
+  font-family: Arial, sans-serif;
+  background: #f4f6fb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.login-card {
+  background: #fff;
+  padding: 40px 30px;
+  border-radius: 15px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  width: 350px;
+  text-align:center;
+}
+.login-card h1 {
+  margin-bottom: 5px;
+  font-size: 22px;
+  color: #2b6cb0;
+}
+.login-card p {
+  color:#666;
+  margin-bottom:20px;
+}
+.login-card input {
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-size:14px;
+}
+.login-card button {
+  width:100%;
+  padding:10px;
+  background:#2b6cb0;
+  color:#fff;
+  font-size:16px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  margin-top:10px;
+  transition: 0.3s;
+}
+.login-card button:hover { background:#1e4a7a; }
+.error { color:#e53e3e; margin-top:10px; font-size:14px; }
+.success { color:#2f855a; margin-top:10px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="login-card">
+  <h1>WELCOME TO OUR CLINIC</h1>
+  <p>Login to access your dashboard</p>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <div id="msg" class="error"></div>
+</div>
+
+<script>
+// Initialize users if not exist
+if(!localStorage.getItem('users')){
+  localStorage.setItem('users', JSON.stringify({
+    admin:{password:'admin123',role:'admin'},
+    finance:{password:'finance123',role:'finance'},
+    drug:{password:'drug123',role:'drug'},
+    patient:{password:'patient123',role:'patient'},
+    laboratory:{password:'lab123',role:'laboratory'},
+    shared:{password:'shared123',role:'shared'},
+    pharmacy:{password:'pharm123',role:'pharmacy'},
+    staff:{password:'staff123',role:'staff'}
+  }));
+}
+
+// Track login attempts
+let loginAttempts = JSON.parse(localStorage.getItem('loginAttempts')||'{}');
+
+function login(){
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const msg = document.getElementById('msg');
+  const users = JSON.parse(localStorage.getItem('users'));
+
+  if(!username || !password){
+    msg.textContent = 'Please enter username and password.';
+    msg.className='error';
+    return;
+  }
+
+  // Initialize user attempt
+  if(!loginAttempts[username]) loginAttempts[username]=0;
+
+  // Check user
+  if(users[username] && users[username].password === password){
+    localStorage.setItem('loggedIn','true');
+    localStorage.setItem('loggedInUser', JSON.stringify({username:username,role:users[username].role}));
+    loginAttempts[username]=0; // reset attempts
+    localStorage.setItem('loginAttempts',JSON.stringify(loginAttempts));
+    msg.textContent='Login successful! Redirecting...';
+    msg.className='success';
+    setTimeout(()=>{ window.location.href='dashboard.html'; },800);
+  } else {
+    loginAttempts[username]++;
+    localStorage.setItem('loginAttempts',JSON.stringify(loginAttempts));
+    const remaining = 3-loginAttempts[username];
+    if(remaining<=0){
+      msg.textContent='Login disabled! Please contact admin to reset your password.';
+      msg.className='error';
+    } else {
+      msg.textContent=`Invalid credentials. You have ${remaining} attempts left.`;
+      msg.className='error';
+    }
+  }
+}
+</script>
+</body>
+</html>

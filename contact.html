@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact & Messages - Clinic</title>
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6fb;
+    display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    background: #2b6cb0;
+    color: white;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.sidebar a {
+    color: white;
+    text-decoration: none;
+    margin: 8px 0;
+    padding: 10px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.sidebar a span.icon {
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+    margin-right: 10px;
+    font-size: 18px;
+    transition: transform 0.3s ease, text-shadow 0.3s ease;
+}
+
+.sidebar a:hover span.icon {
+    transform: scale(1.3) rotate(10deg);
+    text-shadow: 0 0 10px rgba(255,255,255,0.8);
+}
+
+.sidebar a.facebook { background: #3b5998; }
+.sidebar a.instagram { background: #e1306c; }
+.sidebar a.linkedin { background: #0a66c2; }
+.sidebar a.telegram { background: #0088cc; }
+.sidebar a.youtube { background: #ff0000; }
+.sidebar a.email { background: #dd4b39; }
+
+.main {
+    flex: 1;
+    padding: 20px;
+}
+
+h1, h2 {
+    color: #2b6cb0;
+    text-align: center;
+}
+
+.card {
+    background: white;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 15px;
+    background: #2b6cb0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+#conversation {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 6px;
+    background: #f9f9f9;
+}
+
+.message {
+    margin-bottom: 10px;
+}
+
+.message.patient {
+    text-align: left;
+}
+
+.message.admin {
+    text-align: right;
+    color: white;
+}
+
+.message.admin span {
+    background: #2b6cb0;
+    padding: 5px 10px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.message.patient span {
+    background: #e6f0fa;
+    padding: 5px 10px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Highlight unread messages */
+.message.patient.unread span {
+    background: #ffeeba;
+    border: 1px solid #ffc107;
+}
+
+.admin-reply-box {
+    margin-top: 10px;
+}
+
+.admin-reply-box input {
+    width: 80%;
+    margin-right: 5px;
+}
+
+.admin-reply-box button {
+    width: 18%;
+}
+
+/* Notification Bell */
+.notification-bell {
+    position: fixed;
+    top: 15px;
+    right: 20px;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+#notification-count {
+    background: red;
+    color: white;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 50%;
+    vertical-align: top;
+    margin-left: 5px;
+}
+
+/* Toast Notification */
+.toast {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: #2b6cb0;
+    color: white;
+    text-align: center;
+    border-radius: 6px;
+    padding: 15px;
+    position: fixed;
+    z-index: 1001;
+    right: 20px;
+    bottom: 30px;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: opacity 0.5s, bottom 0.5s;
+}
+
+.toast.show {
+    visibility: visible;
+    opacity: 1;
+    bottom: 50px;
+}
+
+@media(max-width:900px){
+    body { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: relative; }
+    .admin-reply-box input, .admin-reply-box button { width: 100%; margin-top: 5px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <h2>Clinic Contact</h2>
+    <a href="tel:+251912345678"><span class="icon">📞</span> Call Us</a>
+    <a href="mailto:clinic@example.com" class="email"><span class="icon">✉️</span> Email</a>
+    <a href="https://www.facebook.com/" target="_blank" class="facebook"><span class="icon">📘</span> Facebook</a>
+    <a href="https://www.instagram.com/" target="_blank" class="instagram"><span class="icon">📸</span> Instagram</a>
+    <a href="https://www.linkedin.com/" target="_blank" class="linkedin"><span class="icon">🔗</span> LinkedIn</a>
+    <a href="https://t.me/" target="_blank" class="telegram"><span class="icon">✈️</span> Telegram</a>
+    <a href="https://www.youtube.com/" target="_blank" class="youtube"><span class="icon">▶️</span> YouTube</a>
+    <a href="https://www.clinicwebsite.com" target="_blank"><span class="icon">🌐</span> Website</a>
+    <a href="#">📍 Location</a>
+    <a href="dashboard.html">🏠 Dashboard</a>
+</div>
+
+<!-- Notification Bell -->
+<div class="notification-bell" title="New Messages">
+    🔔 <span id="notification-count">0</span>
+</div>
+
+<!-- Main content -->
+<div class="main">
+
+    <div class="card contact-info">
+        <h1>Contact Information</h1>
+        <ul>
+            <li>📞 <span>Phone:</span> +251 912 345678</li>
+            <li>✉️ <span>Email:</span> clinic@example.com</li>
+            <li>📘 <span>Facebook:</span> facebook.com/clinic</li>
+            <li>📸 <span>Instagram:</span> instagram.com/clinic</li>
+            <li>🔗 <span>LinkedIn:</span> linkedin.com/company/clinic</li>
+            <li>✈️ <span>Telegram:</span> t.me/clinic</li>
+            <li>▶️ <span>YouTube:</span> youtube.com/clinic</li>
+            <li>🌐 <span>Website:</span> www.clinicwebsite.com</li>
+            <li>📍 <span>Address:</span> 123 Clinic Street, Addis Ababa, Ethiopia</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>Send a Message to Admin</h2>
+        <label for="name">Patient Name</label>
+        <input type="text" id="name" placeholder="Your Name">
+
+        <label for="message">Message</label>
+        <textarea id="message" placeholder="Type your message"></textarea>
+
+        <button onclick="sendMessage()">Send Message</button>
+        <button onclick="exportPDF()">Export as PDF</button>
+        <button onclick="exportCSV()">Export as CSV</button>
+
+        <h2>Conversation</h2>
+        <div id="conversation"></div>
+    </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let messages = JSON.parse(localStorage.getItem("messages")) || [];
+let unreadCount = parseInt(localStorage.getItem("unreadCount")) || 0;
+const countSpan = document.getElementById("notification-count");
+countSpan.innerText = unreadCount;
+
+function displayMessages() {
+    const conversation = document.getElementById("conversation");
+    conversation.innerHTML = "";
+    messages.forEach((msg, index) => {
+        const unreadClass = msg.unread ? 'unread' : '';
+        conversation.innerHTML += `
+            <div class="message patient ${unreadClass}"><span>${msg.name}: ${msg.message}</span></div>
+            ${msg.reply ? `<div class="message admin"><span>Admin: ${msg.reply}</span></div>` : ''}
+            <div class="admin-reply-box">
+                <input type="text" id="reply-${index}" placeholder="Admin reply">
+                <button onclick="sendAdminReply(${index})">Reply</button>
+            </div>
+        `;
+    });
+    conversation.scrollTop = conversation.scrollHeight;
+}
+
+function showToast(message) {
+    let toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.classList.add("show"); }, 10);
+    setTimeout(() => { 
+        toast.classList.remove("show"); 
+        setTimeout(() => toast.remove(), 500);
+    }, 4000);
+}
+
+// Notify new message live
+function notifyNewMessage(patientName) {
+    unreadCount++;
+    countSpan.innerText = unreadCount;
+    localStorage.setItem("unreadCount", unreadCount);
+    showToast(`New message from ${patientName}`);
+}
+
+function sendMessage() {
+    const name = document.getElementById("name").value.trim();
+    const message = document.getElementById("message").value.trim();
+    if (!name || !message) { alert("Please fill both fields!"); return; }
+
+    messages.push({ name, message, date: new Date().toLocaleString(), reply: "", unread: true });
+    localStorage.setItem("messages", JSON.stringify(messages));
+    displayMessages();
+    document.getElementById("name").value = "";
+    document.getElementById("message").value = "";
+    notifyNewMessage(name);
+}
+
+function sendAdminReply(index) {
+    const replyInput = document.getElementById(`reply-${index}`);
+    const reply = replyInput.value.trim();
+    if (!reply) return alert("Reply cannot be empty");
+
+    messages[index].reply = reply;
+    messages[index].unread = false;
+    localStorage.setItem("messages", JSON.stringify(messages));
+    displayMessages();
+
+    // Reduce unread count live
+    unreadCount = messages.filter(m => m.unread).length;
+    countSpan.innerText = unreadCount;
+    localStorage.setItem("unreadCount", unreadCount);
+}
+
+function exportPDF() {
+    if (messages.length === 0) { alert("No messages to export!"); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 10;
+    messages.forEach((m, i) => {
+        doc.text(`${i+1}. ${m.date} - ${m.name}: ${m.message}`, 10, y);
+        y += 7;
+        if (m.reply) { doc.text(`   Admin: ${m.reply}`, 10, y); y += 7; }
+        if (y > 280) { doc.addPage(); y = 10; }
+    });
+    doc.save("conversation.pdf");
+}
+
+function exportCSV() {
+    if (messages.length === 0) { alert("No messages to export!"); return; }
+    let csv = "Date,Patient Name,Message,Admin Reply\n";
+    messages.forEach(m => {
+        csv += `"${m.date}","${m.name}","${m.message}","${m.reply || ''}"\n`;
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "conversation.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Clear notifications on bell click
+document.querySelector(".notification-bell").addEventListener("click", () => {
+    unreadCount = 0;
+    messages.forEach(m => m.unread = false);
+    localStorage.setItem("messages", JSON.stringify(messages));
+    localStorage.setItem("unreadCount", unreadCount);
+    countSpan.innerText = unreadCount;
+    displayMessages();
+    showToast("All notifications cleared");
+});
+
+// Initial display
+displayMessages();
+</script>
+
+</body>
+</html>

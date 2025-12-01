@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Clinic Dashboard — Patient, Messages, Visits, Notifications</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --panel:#fff; --accent:#2b6cb0; --accent-dark:#1e4a7a; --muted:#666;
+    --danger:#e53e3e; --success:#2f855a; --card-shadow: 0 6px 20px rgba(18,38,63,0.08);
+    --radius:10px;
+  }
+  [data-theme="dark"]{
+    --bg:#0f1724; --panel:#0b1220; --accent:#2563eb; --accent-dark:#1e3a8a;
+    --muted:#9aa6b2; --card-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  }
+
+  html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--muted);}
+  .app{
+    display:grid; grid-template-columns: 260px 1fr; min-height:100vh;
+  }
+
+  /* SIDEBAR */
+  .sidebar{
+    background:linear-gradient(180deg,var(--accent),var(--accent-dark));
+    color:white; padding:20px; box-shadow:var(--card-shadow);
+    position:relative;
+  }
+  .brand{font-weight:700;font-size:20px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+  .sb-links a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:6px;color:white;text-decoration:none;transition:all .18s}
+  .sb-links a:hover{transform:translateX(6px);background:rgba(0,0,0,0.08)}
+  .small{font-size:12px;color:rgba(255,255,255,0.9)}
+  .sidebar .controls{margin-top:14px}
+  .toggle-sidebar{background:rgba(255,255,255,0.12);border:none;color:white;padding:8px;border-radius:8px;cursor:pointer}
+
+  /* TOPBAR for actions */
+  .topbar{
+    background:var(--panel); padding:12px 18px; display:flex;align-items:center;justify-content:space-between;box-shadow:var(--card-shadow);
+    position:sticky; top:0; z-index:10;
+  }
+  .topbar-left{display:flex;gap:12px;align-items:center}
+  .search-inline input{padding:8px 10px;border-radius:8px;border:1px solid #e6edf6;width:300px}
+  .actions{display:flex;gap:8px;align-items:center}
+
+  /* MAIN AREA */
+  .main{padding:18px; background:transparent}
+  .grid{display:grid;grid-template-columns: 1fr 420px; gap:18px; align-items:start}
+  .card{background:var(--panel); border-radius:var(--radius); padding:14px; box-shadow:var(--card-shadow)}
+  h1,h2{margin:0 0 10px 0;color:var(--muted)}
+  label{font-size:13px;color:var(--muted);display:block;margin-top:8px}
+  input,select,textarea,button{font-size:13px}
+  input,select,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid #e6edf6;background:transparent;color:inherit;box-sizing:border-box}
+  textarea{resize:vertical}
+  .btn{background:var(--accent);color:white;padding:8px 10px;border-radius:8px;border:none;cursor:pointer}
+  .btn:hover{background:var(--accent-dark)}
+  .btn-danger{background:var(--danger)}
+  .muted{color:var(--muted);font-size:13px}
+
+  /* Patient table */
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:10px;border-bottom:1px solid #e9eef6;text-align:left;font-size:13px}
+  th{background:var(--accent);color:white;border-radius:4px}
+  tr:hover{background:rgba(0,0,0,0.02)}
+
+  /* message area */
+  .msg-list{height:240px;overflow:auto;border:1px solid #e6edf6;border-radius:8px;padding:8px;background:transparent}
+  .msg-item{padding:8px;border-bottom:1px dashed #eef4fb}
+  .msg-meta{font-size:12px;color:var(--muted)}
+
+  /* conversation */
+  .conv{height:320px;overflow:auto;padding:8px;border-radius:8px;border:1px solid #e6edf6;background:transparent}
+  .bubble{padding:10px;border-radius:10px;margin-bottom:8px;max-width:78%}
+  .from-me{background:linear-gradient(90deg,var(--accent),var(--accent-dark));color:white;margin-left:auto}
+  .from-other{background:#eef6ff;color:var(--muted)}
+
+  /* small utilities */
+  .row{display:flex;gap:8px;align-items:center}
+  .stack{display:flex;flex-direction:column;gap:8px}
+  .right{margin-left:auto}
+  .chip{display:inline-block;padding:6px 8px;border-radius:999px;background:#eef6ff;color:var(--accent);font-size:12px}
+
+  /* notification drawer */
+  #notifPanel{position:fixed;right:18px;bottom:18px;width:320px;max-height:60vh;overflow:auto;z-index:9999;display:none}
+  #notifPanel .card{padding:12px}
+
+  /* responsive */
+  @media(max-width:980px){
+    .app{grid-template-columns: 1fr}
+    .sidebar{position:relative;width:100%;display:flex;justify-content:space-between;align-items:center}
+    .grid{grid-template-columns:1fr}
+  }
+
+  /* print-friendly voucher page - hidden normally */
+  @media print {
+    body *{visibility:hidden}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{position:fixed;left:0;top:0;width:100%}
+  }
+
+  /* dark adjustments */
+  [data-theme="dark"] .search-inline input{background:#071028;border:1px solid #152036;color:var(--muted)}
+</style>
+</head>
+<body data-theme="light">
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div style="width:40px;height:40px;border-radius:10px;background:white;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800">C</div>
+      <div>
+        Clinic Dashboard
+        <div class="small">Patient Management • Messages • Visits</div>
+      </div>
+    </div>
+
+    <nav class="sb-links">
+      <a href="#" data-section="patients" onclick="navTo(event)()">🧑 Patients</a>
+      <a href="#" data-section="visits" onclick="navTo(event)()">📋 Visits</a>
+      <a href="#" data-section="messages" onclick="navTo(event)()">💬 Messages</a>
+      <a href="#" data-section="staff" onclick="navTo(event)()">👥 Staff</a>
+      <a href="#" data-section="reports" onclick="navTo(event)()">📤 Reports & Export</a>
+    </nav>
+
+    <div class="controls" style="margin-top:12px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="toggle-sidebar" onclick="toggleCollapse()">☰</button>
+        <div style="flex:1">
+          <div class="small">Quick search</div>
+          <input id="globalSearch" placeholder="Search patient ID or name..." oninput="globalSearchHandler()" />
+        </div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <button class="btn" onclick="toggleNotificationsPanel()">🔔 Notifications <span id="notifCount" class="chip" style="display:none">0</span></button>
+        <button onclick="toggleTheme()" class="toggle-sidebar">🌓</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">Active staff</div>
+        <div id="staffStatus" style="margin-top:6px"></div>
+      </div>
+
+      <div style="margin-top:12px" class="small muted">
+        <div>Logout button clears local session and stored data.</div>
+        <button class="btn btn-danger" style="margin-top:8px" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar card">
+      <div class="topbar-left">
+        <div><strong id="currentSectionTitle">Patients</strong></div>
+        <div class="search-inline" style="margin-left:12px">
+          <input id="topSearch" placeholder="Search patients by name or ID..." oninput="renderPatientTable()" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="showSection('patients')">Patients</button>
+        <button class="btn" onclick="showSection('messages')">Messages</button>
+        <button class="btn" onclick="openExportMenu()">Export</button>
+        <button class="btn" onclick="openPrintCenter()">Print</button>
+      </div>
+    </div>
+
+    <!-- CONTENT GRID -->
+    <div class="grid" style="margin-top:12px">
+      <!-- LEFT COLUMN -->
+      <div>
+        <!-- PATIENTS SECTION -->
+        <div id="patients" class="card section">
+          <h2>Patient Management</h2>
+
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label>Full name</label><input id="pName" placeholder="First Last">
+              <div style="display:flex;gap:8px">
+                <div style="flex:1">
+                  <label>Age</label><input id="pAge" type="number" min="0">
+                </div>
+                <div style="flex:1">
+                  <label>Gender</label>
+                  <select id="pGender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+                </div>
+              </div>
+              <label>Phone</label><input id="pPhone">
+              <label>Address</label><input id="pAddress">
+
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn" onclick="savePatient()">Save Patient</button>
+                <button class="btn" onclick="clearPatientForm()">Clear</button>
+                <button class="btn" onclick="openQuickRegisterModal()">Quick Visit + Register</button>
+              </div>
+
+              <div style="margin-top:10px" class="muted">Search & actions below. Click a row to quick-edit or view visits.</div>
+            </div>
+
+            <div style="width:360px">
+              <div class="card">
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input id="filterGender" onchange="renderPatientTable()" style="width:120px" />
+                  <select id="filterGenderSelect" onchange="renderPatientTable()"><option value="">All genders</option><option>Male</option><option>Female</option><option>Other</option></select>
+                </div>
+
+                <div style="margin-top:10px">
+                  <strong>Quick Actions</strong>
+                  <div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="btn" onclick="exportPatientsCSV()">Export CSV</button>
+                    <button class="btn" onclick="exportPatientsJSON()">Export JSON</button>
+                    <button class="btn" onclick="prepareBulkPrint()">Print Selected</button>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px">
+                  <strong>Recent Notifications</strong>
+                  <div id="recentNotifs" style="margin-top:8px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px" class="card">
+            <h3 style="margin-bottom:8px">Patient List</h3>
+            <table id="patientTable">
+              <thead>
+                <tr><th>#</th><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Actions</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- VISITS SECTION -->
+        <div id="visits" class="card section" style="display:none">
+          <h2>Patient Visits</h2>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label>Search patient (ID or name)</label>
+              <input id="visitSearch" placeholder="Type ID or name..." onkeyup="lookupPatientForVisit()" />
+              <div id="visitPatientInfo" style="margin-top:8px" class="muted"></div>
+              <label>Visit note / reason</label>
+              <textarea id="visitNote" rows="3"></textarea>
+              <div style="display:flex;gap:8px">
+                <button class="btn" onclick="addVisit()">Add Visit</button>
+                <button class="btn" onclick="printLatestVisit()">Print Visit</button>
+              </div>
+            </div>
+
+            <div style="width:380px">
+              <div class="card">
+                <h4>Selected patient visits</h4>
+                <div id="visitsList" style="max-height:320px;overflow:auto;margin-top:8px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MESSAGES SECTION -->
+        <div id="messages" class="card section" style="display:none">
+          <h2>Messages</h2>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label>From (role)</label>
+              <select id="msgFrom"><option>PatientPage</option><option>Doctor</option><option>Nurse</option><option>Laboratory</option><option>Admin</option></select>
+              <label>To (role)</label>
+              <select id="msgTo"><option>Doctor</option><option>Nurse</option><option>Laboratory</option><option>Admin</option></select>
+              <label>Message</label>
+              <textarea id="msgText" rows="3" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendMessage();}"></textarea>
+              <div style="display:flex;gap:8px">
+                <button class="btn" onclick="sendMessage()">Send</button>
+                <button class="btn" onclick="clearAllMessages()">Clear All</button>
+              </div>
+            </div>
+
+            <div style="width:380px">
+              <div class="card">
+                <h4>Conversations</h4>
+                <div style="display:flex;gap:6px">
+                  <select id="convFilterFrom" onchange="renderConversation()"><option value="">From: any</option><option>PatientPage</option><option>Doctor</option><option>Nurse</option><option>Laboratory</option><option>Admin</option></select>
+                  <select id="convFilterTo" onchange="renderConversation()"><option value="">To: any</option><option>Doctor</option><option>Nurse</option><option>Laboratory</option><option>Admin</option></select>
+                </div>
+                <div class="conv" id="conversation"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STAFF SECTION -->
+        <div id="staff" class="card section" style="display:none">
+          <h2>Staff & presence</h2>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label>Staff name</label><input id="staffName">
+              <label>Role</label>
+              <select id="staffRole"><option>Doctor</option><option>Nurse</option><option>Laboratory</option><option>Admin</option></select>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn" onclick="addStaff()">Add staff</button>
+                <button class="btn" onclick="clearStaffForm()">Clear</button>
+              </div>
+            </div>
+
+            <div style="width:380px">
+              <div class="card">
+                <h4>Active staff</h4>
+                <div id="staffList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REPORTS SECTION -->
+        <div id="reports" class="card section" style="display:none">
+          <h2>Reports & Export</h2>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <button class="btn" onclick="exportPatientsCSV()">Export Patients CSV</button>
+              <button class="btn" onclick="exportVisitsCSV()">Export Visits CSV</button>
+              <button class="btn" onclick="downloadAllData()">Export Full JSON (backup)</button>
+              <div style="margin-top:12px" class="muted">You can also wire the backend endpoints below to push data server-side. See comments in the file for a Firebase example.</div>
+            </div>
+
+            <div style="width:380px">
+              <div class="card">
+                <h4>Print center</h4>
+                <div id="printCenter"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN (sidebar widgets) -->
+      <div>
+        <div class="card">
+          <h3>Notifications</h3>
+          <div id="notifWidget" style="max-height:180px;overflow:auto"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3>Patient quick lookup</h3>
+          <input id="quickLookup" placeholder="Type ID and press Enter" onkeydown="if(event.key==='Enter'){quickLookup()}" />
+          <div id="quickInfo" style="margin-top:8px"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <h3>Live activity</h3>
+          <div id="activityFeed" style="max-height:220px;overflow:auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification panel modal -->
+<div id="notifPanel" class="card" style="display:none">
+  <h3>Notifications <button style="float:right" onclick="clearNotifications()">Clear</button></h3>
+  <div id="notifListPanel"></div>
+</div>
+
+<!-- PRINT AREA (used for voucher & visit print) -->
+<div id="printArea" style="display:none"></div>
+
+<!-- Audio -->
+<audio id="notifSound" src="https://www.soundjay.com/button/sounds/button-16.mp3" preload="auto"></audio>
+
+<script>
+/* ---------------------------
+   STORAGE KEYS and initial data
+   --------------------------- */
+const STORE_KEYS = {
+  patients: 'clinic_patients_v2',
+  visits: 'clinic_visits_v2',
+  messages: 'clinic_messages_v2',
+  notifications: 'clinic_notifications_v2',
+  staff: 'clinic_staff_v2',
+  settings: 'clinic_settings_v2'
+};
+
+/* bootstrap default state if not present */
+function loadStore(key, defaultVal){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):defaultVal;}catch(e){return defaultVal;} }
+function saveStore(key,val){ localStorage.setItem(key, JSON.stringify(val)); /* notify other tabs */ localStorage.setItem(key+'_updated_at', Date.now()); }
+
+/* initial arrays */
+let patients = loadStore(STORE_KEYS.patients, []);
+let visits = loadStore(STORE_KEYS.visits, []);
+let messages = loadStore(STORE_KEYS.messages, []);
+let notifications = loadStore(STORE_KEYS.notifications, []);
+let staff = loadStore(STORE_KEYS.staff, []);
+let settings = loadStore(STORE_KEYS.settings, { theme:'light', nextPatientID: 1001 });
+
+/* local caches and UI state */
+let selectedPatientIndex = null;
+let selectedPatientIDForVisit = null;
+
+/* Helper: find patient by id or name (case-insensitive) */
+function findPatient(query){
+  if(!query) return null;
+  query = String(query).trim().toLowerCase();
+  // try ID exact match
+  const byID = patients.find(p => String(p.patientID) === query);
+  if(byID) return byID;
+  // name contains
+  const byName = patients.find(p => (p.name||'').toLowerCase().includes(query));
+  return byName || null;
+}
+
+/* ---------------------------
+   RENDER FUNCTIONS
+   --------------------------- */
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.style.display='none');
+  document.getElementById(id).style.display='block';
+  document.getElementById('currentSectionTitle').innerText = id.charAt(0).toUpperCase() + id.slice(1);
+  // render content when showing
+  if(id==='patients'){ renderPatientTable(); renderRecentNotifs(); }
+  if(id==='messages'){ renderConversation(); }
+  if(id==='visits'){ renderVisitsListForSelected(); }
+  if(id==='staff'){ renderStaffList(); }
+  if(id==='reports'){ renderPrintCenter(); }
+}
+showSection('patients');
+
+/* patient table render with search */
+function renderPatientTable(){
+  const tbody = document.querySelector('#patientTable tbody');
+  tbody.innerHTML='';
+  const q = (document.getElementById('topSearch').value || '').trim().toLowerCase();
+  const filterGender = (document.getElementById('filterGenderSelect') || {}).value || '';
+  const visible = patients.filter((p)=>{
+    if(filterGender && p.gender !== filterGender) return false;
+    if(!q) return true;
+    return String(p.patientID).includes(q) || (p.name||'').toLowerCase().includes(q) || (p.phone||'').toLowerCase().includes(q);
+  });
+  visible.forEach((p,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td>
+      <td>${p.patientID}</td>
+      <td>${escapeHtml(p.name)}</td>
+      <td>${p.age}</td>
+      <td>${p.gender}</td>
+      <td>${escapeHtml(p.phone)}</td>
+      <td>
+        <button class="btn" onclick="viewPatient('${p.patientID}')">View</button>
+        <button onclick="editPatient('${p.patientID}')" style="margin-left:6px">Edit</button>
+        <button class="btn btn-danger" onclick="deletePatient('${p.patientID}')">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* quick operations */
+function viewPatient(id){
+  const p = patients.find(x => String(x.patientID) === String(id));
+  if(!p) return alert('Patient not found');
+  // fill form for viewing (but not remove)
+  document.getElementById('pName').value = p.name;
+  document.getElementById('pAge').value = p.age;
+  document.getElementById('pGender').value = p.gender;
+  document.getElementById('pPhone').value = p.phone;
+  document.getElementById('pAddress').value = p.address;
+  selectedPatientIndex = patients.indexOf(p);
+  showSection('patients');
+  addNotification(`Viewed patient: ${p.name} (${p.patientID})`);
+}
+
+/* edit: load into form and remove existing so save will replace */
+function editPatient(id){
+  const idx = patients.findIndex(x => String(x.patientID) === String(id));
+  if(idx === -1) return alert('Not found');
+  const p = patients[idx];
+  document.getElementById('pName').value = p.name;
+  document.getElementById('pAge').value = p.age;
+  document.getElementById('pGender').value = p.gender;
+  document.getElementById('pPhone').value = p.phone;
+  document.getElementById('pAddress').value = p.address;
+  // remove temporarily (we'll re-add on save)
+  patients.splice(idx,1);
+  saveStore(STORE_KEYS.patients, patients);
+  renderPatientTable();
+}
+
+/* delete patient (and their visits) */
+function deletePatient(id){
+  if(!confirm('Delete patient and all their visits?')) return;
+  patients = patients.filter(x => String(x.patientID) !== String(id));
+  visits = visits.filter(v => String(v.patientID) !== String(id));
+  saveStore(STORE_KEYS.patients, patients);
+  saveStore(STORE_KEYS.visits, visits);
+  renderPatientTable();
+  renderVisitsListForSelected();
+  addNotification(`Patient ${id} deleted`);
+}
+
+/* save new patient (or after edit) */
+function savePatient(){
+  const name = (document.getElementById('pName').value||'').trim();
+  const age = document.getElementById('pAge').value;
+  const gender = document.getElementById('pGender').value;
+  const phone = (document.getElementById('pPhone').value||'').trim();
+  const address = (document.getElementById('pAddress').value||'').trim();
+  if(!name || !age || !gender || !phone || !address){ return alert('Fill all fields'); }
+  const newID = settings.nextPatientID++;
+  const registerTime = new Date().toLocaleString();
+  const patientObj = { patientID: newID, name, age, gender, phone, address, registerTime };
+  patients.push(patientObj);
+  saveStore(STORE_KEYS.patients, patients);
+  saveStore(STORE_KEYS.settings, settings);
+  renderPatientTable();
+  clearPatientForm();
+  addNotification(`New patient registered: ${name} (ID: ${newID})`);
+  // auto-open visit panel for quick visit
+  selectedPatientIDForVisit = newID;
+  showSection('visits');
+}
+
+/* clear form */
+function clearPatientForm(){
+  document.getElementById('pName').value='';
+  document.getElementById('pAge').value='';
+  document.getElementById('pGender').value='';
+  document.getElementById('pPhone').value='';
+  document.getElementById('pAddress').value='';
+}
+
+/* ---------------------------
+   VISIT HANDLING
+   --------------------------- */
+function lookupPatientForVisit(){
+  const q = (document.getElementById('visitSearch').value||'').trim();
+  const p = findPatient(q);
+  if(p){
+    document.getElementById('visitPatientInfo').innerHTML = `<strong>${p.name}</strong> • ID: ${p.patientID} • ${p.phone}`;
+    selectedPatientIDForVisit = p.patientID;
+    renderVisitsListForSelected();
+  } else {
+    document.getElementById('visitPatientInfo').innerHTML = `<span class="muted">No patient found</span>`;
+    selectedPatientIDForVisit = null;
+    renderVisitsListForSelected();
+  }
+}
+
+function addVisit(){
+  if(!selectedPatientIDForVisit) return alert('Search and select a patient first');
+  const note = (document.getElementById('visitNote').value||'').trim();
+  if(!note) return alert('Add visit note / reason');
+  const v = { id: 'V'+Date.now(), patientID: selectedPatientIDForVisit, note, time: new Date().toLocaleString() };
+  visits.push(v);
+  saveStore(STORE_KEYS.visits, visits);
+  document.getElementById('visitNote').value='';
+  renderVisitsListForSelected();
+  addNotification(`New visit for patient ${selectedPatientIDForVisit}`);
+}
+
+function renderVisitsListForSelected(){
+  const container = document.getElementById('visitsList');
+  container.innerHTML='';
+  if(!selectedPatientIDForVisit){ container.innerHTML = '<div class="muted">No patient selected</div>'; return; }
+  const patientVisits = visits.filter(v => String(v.patientID) === String(selectedPatientIDForVisit)).sort((a,b)=>b.time - a.time);
+  if(patientVisits.length===0){ container.innerHTML='<div class="muted">No visits yet for this patient</div>'; return; }
+  patientVisits.forEach(v=>{
+    const div=document.createElement('div');
+    div.style.borderBottom='1px solid #eef4fb'; div.style.padding='8px';
+    div.innerHTML = `<div><strong>${v.time}</strong></div><div>${escapeHtml(v.note)}</div>
+      <div style="margin-top:6px"><button class="btn" onclick="printVisit('${v.id}')">Print</button> <button class="btn" onclick="deleteVisit('${v.id}')">Delete</button></div>`;
+    container.appendChild(div);
+  });
+}
+
+function deleteVisit(id){ if(!confirm('Delete this visit?')) return; visits = visits.filter(v=>v.id!==id); saveStore(STORE_KEYS.visits,visits); renderVisitsListForSelected(); addNotification('Visit deleted'); }
+
+function printVisit(id){
+  const v = visits.find(x=>x.id===id);
+  if(!v) return alert('Visit not found');
+  const p = patients.find(x=>String(x.patientID)===String(v.patientID));
+  const html = renderVisitPrintHTML(p,v);
+  openPrintHtml(html);
+}
+function printLatestVisit(){
+  if(!selectedPatientIDForVisit) return alert('Select a patient first');
+  const patientVisits = visits.filter(v => String(v.patientID) === String(selectedPatientIDForVisit));
+  if(patientVisits.length===0) return alert('No visits to print');
+  const latest = patientVisits[patientVisits.length-1];
+  printVisit(latest.id);
+}
+
+/* ---------------------------
+   MESSAGES
+   --------------------------- */
+function sendMessage(){
+  const from = document.getElementById('msgFrom').value;
+  const to = document.getElementById('msgTo').value;
+  const text = (document.getElementById('msgText').value||'').trim();
+  if(!from || !to || !text) return alert('Select from, to and type message');
+  const m = { id:'M'+Date.now(), from, to, text, time: new Date().toLocaleString() };
+  messages.push(m);
+  saveStore(STORE_KEYS.messages, messages);
+  document.getElementById('msgText').value='';
+  renderConversation();
+  addNotification(`Message from ${from} → ${to}`);
+}
+
+function renderConversation(){
+  const conv = document.getElementById('conversation');
+  conv.innerHTML='';
+  const f = document.getElementById('convFilterFrom').value;
+  const t = document.getElementById('convFilterTo').value;
+  const filtered = messages.filter(m => (f?m.from===f:true) && (t?m.to===t:true)).slice().reverse();
+  filtered.forEach(m=>{
+    const d = document.createElement('div');
+    d.className = 'msg-item';
+    d.innerHTML = `<div style="font-weight:600">${escapeHtml(m.from)} ➤ ${escapeHtml(m.to)}</div>
+      <div style="margin-top:6px">${escapeHtml(m.text)}</div>
+      <div class="msg-meta">${m.time} • <a href="#" onclick='replyMessage("${m.from}")'>reply</a></div>`;
+    conv.appendChild(d);
+  });
+}
+
+function replyMessage(role){ document.getElementById('msgFrom').value = 'PatientPage'; document.getElementById('msgTo').value = role; }
+
+/* clear messages */
+function clearAllMessages(){ if(!confirm('Clear all messages?'))return; messages=[]; saveStore(STORE_KEYS.messages,messages); renderConversation(); }
+
+/* ---------------------------
+   STAFF & PRESENCE
+   --------------------------- */
+function addStaff(){
+  const name = (document.getElementById('staffName').value||'').trim();
+  const role = document.getElementById('staffRole').value;
+  if(!name) return alert('Enter staff name');
+  const id = 'S'+Date.now();
+  const s = { id, name, role, online:false, lastSeen:new Date().toLocaleString() };
+  staff.push(s); saveStore(STORE_KEYS.staff, staff);
+  renderStaffList();
+  document.getElementById('staffName').value='';
+  addNotification(`Staff added: ${name}`);
+}
+
+function renderStaffList(){
+  const el = document.getElementById('staffList'); el.innerHTML='';
+  staff.forEach(s=>{
+    const div = document.createElement('div');
+    div.style.display='flex';div.style.alignItems='center';div.style.justifyContent='space-between';
+    const left = document.createElement('div');
+    left.innerHTML = `<strong>${escapeHtml(s.name)}</strong><div class="muted">${s.role} • ${s.lastSeen}</div>`;
+    const right = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.className='btn';
+    btn.innerText = s.online ? 'Set offline' : 'Set online';
+    btn.onclick = ()=>{ toggleStaffOnline(s.id); };
+    const del = document.createElement('button');
+    del.className='btn btn-danger'; del.style.marginLeft='6px'; del.innerText='Delete';
+    del.onclick = ()=>{ if(confirm('Delete staff?')){ staff=staff.filter(x=>x.id!==s.id); saveStore(STORE_KEYS.staff,staff); renderStaffList(); } };
+    right.appendChild(btn); right.appendChild(del);
+    div.appendChild(left); div.appendChild(right);
+    el.appendChild(div);
+  });
+  renderActiveStaffWidget();
+}
+
+function toggleStaffOnline(id){
+  const idx = staff.findIndex(s=>s.id===id); if(idx===-1) return;
+  staff[idx].online = !staff[idx].online; staff[idx].lastSeen = new Date().toLocaleString();
+  saveStore(STORE_KEYS.staff,staff);
+  renderStaffList();
+  addNotification(`${staff[idx].name} is now ${staff[idx].online?'online':'offline'}`);
+}
+function renderActiveStaffWidget(){
+  const w = document.getElementById('staffStatus'); w.innerHTML='';
+  staff.filter(s=>s.online).forEach(s=>{
+    const span = document.createElement('div'); span.className='chip'; span.style.marginBottom='6px';
+    span.innerText = `${s.name} • ${s.role}`;
+    w.appendChild(span);
+  });
+}
+
+/* ---------------------------
+   NOTIFICATIONS
+   --------------------------- */
+function addNotification(text){
+  const n = { id:'N'+Date.now(), text, time:new Date().toLocaleString(), read:false };
+  notifications.push(n);
+  saveStore(STORE_KEYS.notifications, notifications);
+  // small UI updates
+  renderNotifsWidget();
+  playNotifSound();
+  broadcastActivity(`${text}`);
+}
+function renderNotifsWidget(){
+  const widget = document.getElementById('notifWidget'); widget.innerHTML='';
+  notifications.slice().reverse().slice(0,12).forEach(n=>{
+    const d = document.createElement('div'); d.style.padding='6px'; d.style.borderBottom='1px solid #eef4fb';
+    d.innerHTML = `<div style="font-weight:700">${escapeHtml(n.text)}</div><div class="muted">${n.time}</div>`;
+    widget.appendChild(d);
+  });
+  // count
+  const count = notifications.length;
+  const nc = document.getElementById('notifCount');
+  if(count>0){ nc.style.display='inline-block'; nc.innerText = count; } else nc.style.display='none';
+  // panel list
+  const panel = document.getElementById('notifListPanel'); if(panel) panel.innerHTML='';
+  notifications.slice().reverse().forEach(n=>{ const el=document.createElement('div'); el.style.padding='6px'; el.innerHTML=`${escapeHtml(n.text)}<br><small class="muted">${n.time}</small>`; panel.appendChild(el); });
+  // recent notifs small widget
+  renderRecentNotifs();
+}
+function renderRecentNotifs(){
+  const r = document.getElementById('recentNotifs'); if(!r) return;
+  r.innerHTML='';
+  notifications.slice().reverse().slice(0,4).forEach(n=>{
+    const div=document.createElement('div'); div.className='muted'; div.style.marginBottom='6px';
+    div.innerHTML = `${escapeHtml(n.text)} • <small>${n.time}</small>`;
+    r.appendChild(div);
+  });
+}
+function toggleNotificationsPanel(){ const panel = document.getElementById('notifPanel'); panel.style.display = panel.style.display==='block'?'none':'block'; renderNotifsWidget(); }
+function clearNotifications(){ if(!confirm('Clear notifications?'))return; notifications=[]; saveStore(STORE_KEYS.notifications,notifications); renderNotifsWidget(); }
+
+/* play sound */
+function playNotifSound(){ try{ document.getElementById('notifSound').play(); }catch(e){} }
+function broadcastActivity(text){ const el = document.getElementById('activityFeed'); const d = document.createElement('div'); d.style.padding='6px'; d.style.borderBottom='1px solid #eef4fb'; d.innerHTML = `<strong>${escapeHtml(text)}</strong><div class="muted">${new Date().toLocaleString()}</div>`; el.prepend(d); }
+
+/* ---------------------------
+   EXPORT / PRINT / CSV
+   --------------------------- */
+function exportPatientsCSV(){
+  if(patients.length===0) return alert('No patients');
+  const header = ['patientID','name','age','gender','phone','address','registerTime'];
+  const rows = patients.map(p => header.map(h => `"${String(p[h]||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  downloadBlob(csv, 'text/csv', `patients-${Date.now()}.csv`);
+}
+function exportVisitsCSV(){
+  if(visits.length===0) return alert('No visits');
+  const header = ['id','patientID','note','time'];
+  const rows = visits.map(v => header.map(h => `"${String(v[h]||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  downloadBlob(csv, 'text/csv', `visits-${Date.now()}.csv`);
+}
+function exportPatientsJSON(){
+  downloadBlob(JSON.stringify(patients, null, 2), 'application/json', `patients-${Date.now()}.json`);
+}
+function downloadAllData(){
+  const dump = { patients, visits, messages, notifications, staff, settings };
+  downloadBlob(JSON.stringify(dump,null,2),'application/json',`clinic-backup-${Date.now()}.json`);
+}
+function downloadBlob(content, mime, filename){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+
+/* Printing helpers - print a small visit/patient voucher using print stylesheet */
+function openPrintHtml(html){
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = html;
+  // show print area then call window.print()
+  setTimeout(()=>{ window.print(); }, 200);
+}
+function renderVisitPrintHTML(p,v){
+  const pObj = patients.find(x=>String(x.patientID)===String(v.patientID));
+  return `
+  <div id="printAreaInner" style="padding:20px;font-family:Arial">
+    <h2 style="margin-bottom:0">${escapeHtml(pObj.name)}</h2>
+    <div style="color:#666">Patient ID: ${pObj.patientID} • Phone: ${escapeHtml(pObj.phone)}</div>
+    <hr/>
+    <h3>Visit Note</h3>
+    <div style="white-space:pre-wrap">${escapeHtml(v.note)}</div>
+    <hr/>
+    <div style="display:flex;justify-content:space-between;margin-top:20px">
+      <div>Printed: ${new Date().toLocaleString()}</div>
+      <div>Clinic</div>
+    </div>
+  </div>`;
+}
+
+/* Quick register modal style: simple prompt flow */
+function openQuickRegisterModal(){
+  const name = prompt('Patient name (First Last)');
+  if(!name) return;
+  const phone = prompt('Phone number');
+  const a = prompt('Age');
+  const g = prompt('Gender (Male/Female/Other)');
+  const addr = prompt('Address');
+  if(!name||!phone||!a||!g||!addr) return alert('All fields required in quick register');
+  document.getElementById('pName').value = name; document.getElementById('pPhone').value=phone; document.getElementById('pAge').value=a; document.getElementById('pGender').value=g; document.getElementById('pAddress').value=addr;
+  savePatient();
+}
+
+/* Prepare print center */
+function renderPrintCenter(){
+  const el = document.getElementById('printCenter'); el.innerHTML = '';
+  el.innerHTML = `<div class="muted">Use the Export or Print buttons in the topbar. You can also print individual visits from Visits section.</div>`;
+}
+function prepareBulkPrint(){
+  // create a printable page with selected patients (here we print all for demo)
+  if(patients.length===0) return alert('No patients');
+  let html = '';
+  patients.forEach(p=>{
+    html += `<div style="margin-bottom:18px;padding:12px;border:1px solid #ddd">${p.name} • ID ${p.patientID} • ${p.phone}</div>`;
+  });
+  openPrintHtml(html);
+}
+
+/* ---------------------------
+   UTILS
+   --------------------------- */
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }); }
+
+/* ---------------------------
+   UI: Quick lookup & global search
+   --------------------------- */
+function quickLookup(){
+  const q = document.getElementById('quickLookup').value.trim();
+  if(!q) return;
+  const p = findPatient(q);
+  const el = document.getElementById('quickInfo');
+  if(!p){ el.innerHTML = '<div class="muted">Not found</div>'; return; }
+  el.innerHTML = `<div><strong>${escapeHtml(p.name)}</strong> • ID ${p.patientID} • ${escapeHtml(p.phone)}</div>
+    <div style="margin-top:6px"><button class="btn" onclick="openPatientVoucher(${p.patientID})">Print voucher</button> <button class="btn" onclick="openPatientVisits(${p.patientID})">View visits</button></div>`;
+}
+function openPatientVoucher(id){
+  const p = patients.find(x=>String(x.patientID)===String(id));
+  if(!p) return alert('Patient not found');
+  const vhtml = `<div style="padding:20px;font-family:Arial"><h2>${escapeHtml(p.name)}</h2><div>ID: ${p.patientID}</div><div>Phone: ${escapeHtml(p.phone)}</div><div>Address: ${escapeHtml(p.address)}</div><div>Reg: ${p.registerTime}</div></div>`;
+  openPrintHtml(vhtml);
+}
+function openPatientVisits(id){
+  selectedPatientIDForVisit = id; showSection('visits'); document.getElementById('visitSearch').value = id; lookupPatientForVisit();
+}
+
+/* global search */
+function globalSearchHandler(){
+  const q = document.getElementById('globalSearch').value.trim();
+  if(!q) return;
+  const p = findPatient(q);
+  if(p) {
+    openPatientVisits(p.patientID);
+    addNotification(`Quick lookup: ${p.name}`);
+  } else {
+    alert('No match found');
+  }
+}
+/* ---------------------------
+   Auto-fill patient page with staff name
+   --------------------------- */
+function setActiveStaffForPatientPage() {
+  const activeStaff = staff.find(s => s.online) || staff[0]; // take first online staff or first staff
+  if(activeStaff){
+    // set Messages section "From" to staff name
+    const msgFrom = document.getElementById('msgFrom');
+    if(msgFrom) msgFrom.value = activeStaff.name;
+
+    // optionally, show staff name somewhere on patient page
+    const staffWidget = document.getElementById('staffStatus');
+    if(staffWidget){
+      staffWidget.innerHTML = `<div class="chip">${activeStaff.name} • ${activeStaff.role}</div>`;
+    }
+  }
+}
+
+// call it once on page load
+setActiveStaffForPatientPage();
+
+
+/* ---------------------------
+   THEME & SIDEBAR
+   --------------------------- */
+function toggleTheme(){
+  const el = document.body;
+  const t = el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  el.setAttribute('data-theme', t);
+  settings.theme = t; saveStore(STORE_KEYS.settings, settings);
+}
+if(settings.theme) document.body.setAttribute('data-theme', settings.theme);
+
+function toggleCollapse(){ const sb = document.getElementById('sidebar'); sb.style.display = sb.style.display==='none'?'block':'none'; }
+
+/* ---------------------------
+   SESSION / LOGOUT
+   --------------------------- */
+function logout(){
+  if(!confirm('Logout will clear local session storage and reset UI. Continue?')) return;
+  localStorage.removeItem(STORE_KEYS.patients);
+  localStorage.removeItem(STORE_KEYS.visits);
+  localStorage.removeItem(STORE_KEYS.messages);
+  localStorage.removeItem(STORE_KEYS.notifications);
+  localStorage.removeItem(STORE_KEYS.staff);
+  localStorage.removeItem(STORE_KEYS.settings);
+  alert('Cleared local session. Reloading.');
+  location.reload();
+}
+
+/* ---------------------------
+   Activity & cross-tab sync (listen to storage events)
+   --------------------------- */
+window.addEventListener('storage', (e) => {
+  // listen for specific keys and reload local copies to keep tabs in sync
+  if(e.key && e.key.startsWith(STORE_KEYS.patients)){
+    patients = loadStore(STORE_KEYS.patients, []);
+    renderPatientTable();
+  }
+  if(e.key && e.key.startsWith(STORE_KEYS.visits)){
+    visits = loadStore(STORE_KEYS.visits, []);
+    renderVisitsListForSelected();
+  }
+  if(e.key && e.key.startsWith(STORE_KEYS.messages)){
+    messages = loadStore(STORE_KEYS.messages, []);
+    renderConversation();
+  }
+  if(e.key && e.key.startsWith(STORE_KEYS.notifications)){
+    notifications = loadStore(STORE_KEYS.notifications, []);
+    renderNotifsWidget();
+  }
+  if(e.key && e.key.startsWith(STORE_KEYS.staff)){
+    staff = loadStore(STORE_KEYS.staff, []);
+    renderStaffList();
+  }
+  if(e.key && e.key.startsWith(STORE_KEYS.settings)){
+    settings = loadStore(STORE_KEYS.settings, settings);
+    document.body.setAttribute('data-theme', settings.theme || 'light');
+  }
+});
+
+/* ---------------------------
+   UI wireups & init
+   --------------------------- */
+function navTo(e){
+  e.preventDefault();
+  const id = e.currentTarget.getAttribute('data-section');
+  showSection(id);
+}
+function openExportMenu(){ showSection('reports'); }
+function openPrintCenter(){ showSection('reports'); }
+
+/* init render */
+renderPatientTable();
+renderConversation();
+renderNotifsWidget();
+renderStaffList();
+renderRecentNotifs();
+
+/* ---------------------------
+   Small helpers & developer backend notes
+   --------------------------- */
+
+/*
+  Backend integration notes (7):
+  - This app is client-only. To enable a server backend:
+    * Create endpoints:
+      POST /api/patients -> add patient
+      GET /api/patients -> list
+      POST /api/visits -> add visit
+      GET /api/visits?patientID= -> list visits
+      POST /api/messages -> send message
+    * On each local save, also call fetch() to push to your backend.
+    * Example (uncomment and replace URL):
+      fetch('https://your-server/api/patients', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(patientObj) });
+
+  Firebase quick-start (optional):
+  - Include firebase scripts and initialize with your config, then push objects to Firestore under 'patients','visits','messages'.
+  - Example sketch (do not run until you add config):
+    // firebase.initializeApp({ apiKey:..., projectId:... });
+    // const db = firebase.firestore();
+    // db.collection('patients').add(patientObj);
+*/
+
+/* small UI & activity */
+function openQuickRegisterModal(){} /* placeholder to avoid duplicate definition issues in some browsers */
+
+/* helper to broadcast small activity to feed */
+function broadcastActivity(msg){
+  const f = document.getElementById('activityFeed');
+  const d=document.createElement('div'); d.style.padding='6px'; d.style.borderBottom='1px solid #eef4fb';
+  d.innerHTML = `<strong>${escapeHtml(msg)}</strong><div class="muted">${new Date().toLocaleString()}</div>`;
+  f.prepend(d);
+}
+
+/* small extra: manually add a sample patient if none (for demo) */
+if(patients.length===0){
+  const demo = { patientID: settings.nextPatientID++, name:'Amanuel Bekele', age:29, gender:'Male', phone:'0912345678', address:'Addis Ababa', registerTime: new Date().toLocaleString() };
+  patients.push(demo); saveStore(STORE_KEYS.patients, patients); saveStore(STORE_KEYS.settings, settings);
+  addNotification(`Demo patient created: ${demo.name}`);
+}
+
+/* render recent activity */
+renderNotifsWidget();
+renderPatientTable();
+
+</script>
+</body>
+</html>

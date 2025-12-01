@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Us - Clinic</title>
+<style>
+/* Reset and basic styles */
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6fb;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar styles */
+.sidebar {
+    width: 220px;
+    background: #2b6cb0;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.sidebar a {
+    color: white;
+    text-decoration: none;
+    padding: 12px 20px;
+    display: block;
+    margin: 5px 0;
+    border-radius: 6px;
+}
+
+.sidebar a:hover {
+    background: #1e4a7a;
+}
+
+/* Main content styles */
+.main-content {
+    flex: 1;
+    padding: 20px 40px;
+}
+
+/* Back button */
+.btn-back {
+    display: inline-block;
+    padding: 10px 15px;
+    background: #2b6cb0;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    margin-bottom: 20px;
+}
+
+.btn-back:hover {
+    background: #1e4a7a;
+}
+
+/* Welcome Banner */
+.welcome-banner {
+    text-align: center;
+    background: #e0f7ff;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 18px;
+    color: #2b6cb0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+    position: relative;
+    text-transform: uppercase; /* Capital letters */
+}
+
+.welcome-banner .scroll-text {
+    display: inline-block;
+    white-space: nowrap;
+    transition: transform 0.5s ease;
+}
+
+.welcome-banner:hover .scroll-text {
+    animation: horizontal-move 2s infinite alternate ease-in-out;
+}
+
+.welcome-banner span {
+    display: block;
+    margin-top: 5px;
+    font-style: italic;
+    color: #1e4a7a;
+    animation: bounce 1s infinite alternate;
+    display: inline-block;
+}
+
+/* Bounce animation for emoji */
+@keyframes bounce {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-5px); }
+}
+
+/* Horizontal movement animation */
+@keyframes horizontal-move {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(15px); }
+}
+
+/* Top Table for About/Mission/Contact */
+#top-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 15px;
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+#top-table td {
+    background: #c2e0ff;
+    padding: 20px;
+    vertical-align: top;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s, background 0.3s;
+    position: relative;
+}
+
+#top-table td:hover {
+    background: #90c4ff;
+    transform: translateY(-5px);
+    cursor: pointer;
+}
+
+/* Animated badges/icons */
+#top-table td span.badge {
+    font-size: 24px;
+    display: inline-block;
+    margin-right: 10px;
+    animation: bounce 1.5s infinite;
+}
+
+/* Staff Table Styles */
+#staff-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    margin-bottom: 30px;
+}
+
+#staff-table thead tr {
+    background: #2b6cb0;
+    color: white;
+}
+
+#staff-table th, #staff-table td {
+    padding: 10px;
+}
+
+#staff-table tbody tr {
+    background: #e6f0fa;
+    transition: all 0.3s;
+}
+
+#staff-table tbody tr:nth-child(even) {
+    background: #f0f8ff;
+}
+
+#staff-table tbody tr:hover {
+    background: #c2e0ff;
+    cursor: pointer;
+}
+
+#staff-table td span.icon {
+    margin-right: 10px;
+}
+
+/* Services Table Styles */
+#services-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+#services-table thead tr {
+    background: #2b6cb0;
+    color: white;
+}
+
+#services-table th, #services-table td {
+    padding: 10px;
+}
+
+#services-table tbody tr {
+    background: #e6f0fa;
+    transition: all 0.3s;
+}
+
+#services-table tbody tr:nth-child(even) {
+    background: #f0f8ff;
+}
+
+#services-table tbody tr:hover {
+    background: #c2e0ff;
+    cursor: pointer;
+}
+
+#services-table td span.icon {
+    margin-right: 8px;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    #top-table td {
+        display: block;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <h2>Clinic</h2>
+    <a href="#about">About Us</a>
+    <a href="#mission">Mission & Vision</a>
+    <a href="#contact">Contact</a>
+    <a href="#staff">Our Staff</a>
+    <a href="#services">Services</a>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <a href="dashboard.html" class="btn-back">← Back to Dashboard</a>
+
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="scroll-text">
+            WELCOME TO OUR CLINIC, ESTEEMED CUSTOMERS!
+            <span>“LAUGHTER IS THE BEST MEDICINE… BUT WE’VE GOT THE SECOND BEST!” 😄</span>
+        </div>
+    </div>
+
+    <!-- Top Table for About/Mission/Contact -->
+    <table id="top-table">
+        <tr>
+            <td>
+                <span class="badge">🏥</span>
+                <h3>About Our Clinic</h3>
+                <p>
+                    Welcome to our clinic! We provide high-quality healthcare services with modern technology and compassionate staff. Patients enjoy personalized care, safe procedures, and comfortable facilities.
+                </p>
+            </td>
+            <td>
+                <span class="badge">🎯</span>
+                <h3>Mission & Vision</h3>
+                <ul>
+                    <li><strong>Mission:</strong> Accessible, efficient, high-quality healthcare for everyone.</li>
+                    <li><strong>Vision:</strong> Trusted healthcare provider in our community.</li>
+                    <li><strong>Values:</strong> Compassion, Integrity, Excellence, Patient-Centered Care.</li>
+                </ul>
+            </td>
+            <td>
+                <span class="badge">📞</span>
+                <h3>Contact Highlights</h3>
+                <ul>
+                    <li>Phone: +251 912 345678</li>
+                    <li>Email: clinic@example.com</li>
+                    <li>Website: www.clinicwebsite.com</li>
+                </ul>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Staff Section Table -->
+    <div id="staff" class="card">
+        <h2>Meet Our Staff</h2>
+        <table id="staff-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Specialty</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><span class="icon">🩺</span>Dr. Amanuel</td><td>General Physician</td><td>Internal Medicine</td></tr>
+                <tr><td><span class="icon">💉</span>Nurse Hana</td><td>Head Nurse</td><td>Patient Care & Coordination</td></tr>
+                <tr><td><span class="icon">🔬</span>Lab Technician Elias</td><td>Lab Technician</td><td>Clinical Laboratory Tests</td></tr>
+                <tr><td><span class="icon">🏃‍♀️</span>Physiotherapist Miriam</td><td>Physiotherapist</td><td>Rehabilitation & Therapy</td></tr>
+                <tr><td><span class="icon">🩻</span>Radiology Technician Samuel</td><td>Radiology Technician</td><td>X-ray & Imaging</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Services Section Table -->
+    <div id="services" class="card">
+        <h2>Our Services & Resources</h2>
+        <table id="services-table">
+            <thead>
+                <tr>
+                    <th>Service / Resource</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><span class="icon">🩺</span>General Consultation</td><td>Comprehensive check-ups with experienced physicians.</td></tr>
+                <tr><td><span class="icon">🔬</span>Laboratory Testing</td><td>Blood tests, urine analysis, and other clinical tests.</td></tr>
+                <tr><td><span class="icon">💊</span>Pharmacy & Medication</td><td>Dispensing prescribed medicines and health products.</td></tr>
+                <tr><td><span class="icon">🚑</span>Emergency Care</td><td>Immediate attention for urgent medical cases.</td></tr>
+                <tr><td><span class="icon">💉</span>Vaccination & Immunization</td><td>Routine vaccinations for children and adults.</td></tr>
+                <tr><td><span class="icon">💻</span>Telemedicine / Online Consultation</td><td>Remote consultation with qualified doctors via video or chat.</td></tr>
+                <tr><td><span class="icon">🧪</span>Advanced Medical Devices</td><td>State-of-the-art diagnostic machines and imaging equipment.</td></tr>
+                <tr><td><span class="icon">👨‍🔧</span>Specialist Technicians</td><td>Skilled lab technicians, radiologists, and physiotherapists ensuring accurate results.</td></tr>
+                <tr><td><span class="icon">🛋️</span>Patient Comfort</td><td>Modern waiting area, refreshments, free Wi-Fi, and digital health records.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>
